@@ -8,7 +8,7 @@ import sys
 import pdb
 
 # %% --------------------------------------------------
-
+# WHY DID D YOU Fuck up my indexing
 # LOAD DATA:
 Bronze_data = np.loadtxt("Bronze.txt", dtype=float, delimiter=',')
 Silver_data = np.loadtxt("Silver.txt", dtype=float, delimiter=',')
@@ -22,7 +22,7 @@ class Function_node:
     # Globals to be inherited
     # last is the header indicator (indexing from 1!)
     node_types = ('+', '-', '*', '/', '^', 'sin', 'cos', 'const', 'var', 'ERR')
-
+    
     def __init__(self, function_name, children=None, value=None):
 
         # assigning a name in our accepted list
@@ -242,7 +242,6 @@ class NP_Heap(Function_node):
 
         if plotting:
             self.plot_approximation(X_arr, y_pred, y_true=y)
-
         return MSE
 
     def plot_approximation(self, X_arr, y_pred=None, y_true=None):
@@ -317,14 +316,11 @@ M1 = NP_Heap(length=2)
 M1.heap[0] = Function_node('ERR')
 M1.heap[1] = Function_node('+')
 M1.insert(parent_indx=1, position='L', node_obj=Function_node('*'))
-M1.insert(parent_indx=1, position='R',
-          node_obj=Function_node('const', value=1))
+M1.insert(parent_indx=1, position='R', node_obj=Function_node('const', value=1))
 M1.insert(parent_indx=2, position='L', node_obj=Function_node('var'))
-M1.insert(parent_indx=2, position='R',
-          node_obj=Function_node('const', value=3.14))
+M1.insert(parent_indx=2, position='R', node_obj=Function_node('const', value=3.14))
 M1.insert(parent_indx=3, position='L', node_obj=Function_node('+'))
-M1.insert(parent_indx=3, position='R',
-          node_obj=Function_node('const', value=21))
+M1.insert(parent_indx=3, position='R', node_obj=Function_node('const', value=21))
 
 
 M1.print_arr()
