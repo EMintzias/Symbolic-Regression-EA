@@ -57,7 +57,9 @@ class Function_node:
 
 
 # %% ----------------------------------------------------------------
-# https://github.com/swacad/numpy-heap/blob/master/heap.py
+# ***  NP_HEAP CLASS ***
+
+# inspiration: https://github.com/swacad/numpy-heap/blob/master/heap.py
 # Starting at index 1~
 class NP_Heap(Function_node):
     def __init__(self, length=2):
@@ -254,22 +256,82 @@ class NP_Heap(Function_node):
 
         return None
 
-    def Mutation(self):  # TODO
-        # small change to constants and addition/substraction to variables
+    # MUTATION ##### :
+    '''
+        IDEAS: 
+            - Most vanilla: search through heap for the constants and +_ by X small % of the value
+            - Adding operations: for chain terminating variables, replace them with the + operator 
+                                 and add a small constant to the variable
+            - Mutation schedules: annealing or adaptive mutation (increases if stagnating decreases if progress)
+            - Optimization by consolidating into one function so we dont have to traverse heap. (in practice heap should be small!)
+    '''
 
+    def Constant_Mutation(self, change_prcnt=.01):  # TODO
+        # small change to constants and addition/substraction to variables
+        # basic: for node in heap, if name = const +_ X%
+        for i, node in enumerate(self.heap):
+            if type(node) == Function_node and node.function_name == 'const':
+                print('mutating at pos = ', i)
+                print('Before')
+                self.print_arr()
+                mutation_size = change_prcnt*node.value
+                node.value = node.value + mutation_size * \
+                    np.random.choice([-1, 1])
+                print('after')
+                self.print_arr()
+        return None
+
+    def Operator_mutation(self, number):
+        for i, node in enumerate(self.heap):
+            if type(node) == Function_node:  # only operate over nodes....
+                if node.function_name == '*':
+                    print('mutating at pos = ', i)
+                    print('Before')
+                    self.print_arr()
+                    node.function_name = '/'
+                    print('after')
+                    self.print_arr()
         return None
 
     ##### BLOAT PROBLEM ####
-    def pruning(self):  # TODO
-        # deletes useless tree
+    # TODO  self.depth() and getting nodes at a maximum depth
+    def depth_consolidation(self, max_depth=5):
+        if self.depth() > max_depth:
+            for node in self.heap[max_depth]:
+                # calculate averave value and consolidate the node to this value. conditional for large stdv?
+                print('Need to implement')
         return None
 
-    def constant_consolidation(self):  # TODO
-        # deletes useless tree
+    def pruning(self):  # TODO
+        # deletes useless tree (tree that evaluates to 1 for a mult child or a 0 for a + child/sin cos delete)
         return None
+
+    def hoist_mutation(self):  # TODO
+        # Chooses a tree that evaluates to the same constant through x-range and replaces it by the constant
+        return None
+
+
+# %%
+# Testing Mutation
+M1 = NP_Heap(length=2)
+M1.heap[0] = Function_node('ERR')
+M1.heap[1] = Function_node('+')
+M1.insert(parent_indx=1, position='L', node_obj=Function_node('*'))
+M1.insert(parent_indx=1, position='R',
+          node_obj=Function_node('const', value=1))
+M1.insert(parent_indx=2, position='L', node_obj=Function_node('var'))
+M1.insert(parent_indx=2, position='R',
+          node_obj=Function_node('const', value=3.14))
+M1.insert(parent_indx=3, position='L', node_obj=Function_node('+'))
+M1.insert(parent_indx=3, position='R',
+          node_obj=Function_node('const', value=21))
+
+
+M1.print_arr()
 
 
 # %% ----------------------------------
+# TESTING
 t1 = NP_Heap(length=2)
 t1.heap[0] = Function_node('ERR')
 t1.heap[1] = Function_node('+')
@@ -277,8 +339,9 @@ t1.insert(parent_indx=1, position='L', node_obj=Function_node('sin'))
 t1.insert(parent_indx=1, position='R',
           node_obj=Function_node('const', value=1))
 t1.insert(parent_indx=2, position='L', node_obj=Function_node('var'))
-#t1.insert(parent_indx = 2,position= 'R', node_obj = Function_node('var'))
-#t1.insert(parent_indx = 3,position= 'R', node_obj = Function_node('const', value = 3.14))
+t1.insert(parent_indx=2, position='R', node_obj=Function_node('var'))
+t1.insert(parent_indx=3, position='R',
+          node_obj=Function_node('const', value=3.14))
 
 
 t1.evaluate(X=0)
@@ -287,9 +350,9 @@ x_arr = np.linspace(0, 10, 100)
 y = [t1.evaluate(X=x) for x in x_arr]
 t1.heap[6] = None
 t1.print_arr()
-plt.plot(x_arr, y)
+#plt.plot(x_arr, y)
 
-t1.plot_approximation(np.linspace(-5, 5, 100))
+#t1.plot_approximation(np.linspace(-5, 5, 100))
 
 # %% -----------------------------------------------------------
 
@@ -302,3 +365,18 @@ y_pred = np.array([(x-3.5)**2 - 15.2 for x in Bronze_data[:, 0]])
 plt.plot(x, y_pred, 'r')
 MSE = np.sum(np.square(y_pred-y)/y.shape[0])
 print('MSE = ', MSE)
+
+# %%
+
+# Create a NumPy array (for demonstration purposes)
+arr = np.array([[1, 2, 3],
+                [4, 55, 6],
+                [7, 888, 9]])
+
+# Get the maximum width of each column
+max_width = np.max([len(str(item)) for item in arr])
+
+# Use savetxt with custom formatting
+with np.printoptions(linewidth=np.inf, formatter={'all': lambda x: f'{x:{max_width}}'}):
+    np.savetxt('formatted_array.txt', arr, fmt='%d')
+    print(arr)
