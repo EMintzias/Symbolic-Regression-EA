@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import sys
 import pdb
 import math
+import math as m
 import random
 # %% --------------------------------------------------
 # LOAD DATA:
@@ -15,13 +16,18 @@ Silver_data = np.loadtxt("Silver.txt", dtype=float, delimiter=',')
 Gold_data = np.loadtxt("Gold.txt", dtype=float, delimiter=',')
 Platinum_data = np.loadtxt("Platinum.txt", dtype=float, delimiter=',')
 
-print('Bronze_data Range =', np.min(
-    Bronze_data[:, 1]), np.max(Bronze_data[:, 1]))
-print('Silver_data Range =', np.min(
-    Silver_data[:, 1]), np.max(Silver_data[:, 1]))
-print('Gold_data Range =', np.min(Gold_data[:, 1]), np.max(Gold_data[:, 1]))
-print('Platinum_data Range =', np.min(
-    Platinum_data[:, 1]), np.max(Platinum_data[:, 1]))
+print('Bronze_data Range \t=', np.min(
+    Bronze_data[:, 1]), '<->', np.max(Bronze_data[:, 1]))
+print('Silver_data Range \t=', np.min(
+    Silver_data[:, 1]), '<->', np.max(Silver_data[:, 1]))
+print('Gold_data Range \t=', np.min(Gold_data[:, 1]), np.max(Gold_data[:, 1]))
+print('Platinum_data Range \t=', np.min(
+    Platinum_data[:, 1]), '<->', np.max(Platinum_data[:, 1]))
+
+Y_range_Cu = (np.min(Bronze_data[:, 1]), np.max(Bronze_data[:, 1]))
+Y_range_Ag = (np.min(Silver_data[:, 1]), np.max(Silver_data[:, 1]))
+Y_range_Au = (np.min(Gold_data[:, 1]), np.max(Gold_data[:, 1]))
+Y_range_Pt = (np.min(Platinum_data[:, 1]), np.max(Platinum_data[:, 1]))
 
 # %% -------------------------------------------------
 
@@ -95,7 +101,7 @@ class Function_node(object):
 class NP_Heap(Function_node):
     def __init__(self, length=2):
         self.heap = np.full(length, None, dtype=object)
-        # ALL ('+', '-', '*', '/', '^', 'sin', 'cos')
+        # ALL Operators ('+', '-', '*', '/', '^', 'sin', 'cos')
         self.operators = ('*', '+', '-')
         self.trig_operators = ('sin', 'cos')
         self.non_operator = ('x', 'const')
@@ -128,49 +134,18 @@ class NP_Heap(Function_node):
         return right_child
 
     def get_children_idx(self, parent_idx):
-        return 2 * parent_idx, 2 * parent_idx + 1
+        return 2*parent_idx, 2*parent_idx+1
 
     def get_children(self, parent_idx):
-        child_1_idx, child_2_idx = self.get_children_idx(parent_idx)
-        return self.heap[child_1_idx], self.heap[child_2_idx]
+        return self.heap[2*parent_idx], self.heap[2*parent_idx+1]
 
     def get_children_type(self, parent_idx):
         L, R = self.get_children(parent_idx)
         return type(L), type(R)
-    '''
-    # INDEXING AT 0:
 
-    def get_parent_idx(self, child_idx):
-        return (child_idx-1) // 2
-
-    def get_parent(self, child_idx):
-        parent_idx = self.get_parent_idx(child_idx)
-        return self.heap[parent_idx]
-
-    def get_left_child_idx(self, parent_idx):
-        return 2 * parent_idx + 1
-
-    def get_right_child_idx(self, parent_idx):
-        return 2 * parent_idx + 2
-
-    def get_left_child(self, parent_idx):
-        left_child = self.heap[self.get_left_child_idx(parent_idx)]
-        return left_child
-
-    def get_right_child(self, parent_idx):
-        right_child = self.heap[self.get_right_child_idx(parent_idx)]
-        return right_child
-
-    def get_children_idx(self, parent_idx):
-        return 2 * parent_idx + 1, 2 * parent_idx + 2
-
-    def get_children(self, parent_idx):
-        child_1_idx, child_2_idx = self.get_children_idx(parent_idx)
-        return self.heap[child_1_idx], self.heap[child_2_idx]
-    '''
-
-    def get_depth(self):
-        return int(math.floor(math.log2(len(self.heap) + 1)))  # -1
+    def depth(self):
+        deepest_node_ind = max(np.arange(self.heap.size)[self.heap != None])
+        return int(m.floor(m.log2(deepest_node_ind)))
 
     def has_root(self):
         if self.heap[0] == None:
@@ -180,9 +155,6 @@ class NP_Heap(Function_node):
     # Why not just do this?
     # def has_root(self):
     #   return self.heap[0] != None
-
-    def add_root(self, new_node):
-        self.heap[0] = new_node
 
  # INSERT FUNCTION
     def insert(self, parent_indx, node_obj, position=None):
@@ -194,11 +166,9 @@ class NP_Heap(Function_node):
             self.heap = np.append(self.heap,
                                   np.full(self.heap.size, None).astype(Function_node))
 
-        # TODO raise error for operators not in the predefined list of self.operators:
-
         L_indx, R_indx = self.get_children_idx(parent_indx)
 
-        # if a position is provided it will insert with replacemnt
+        # if a position is provided it will insert WITH REPLACEMENT
         if position:
             if position == 'L':
                 self.heap[L_indx] = node_obj
@@ -214,7 +184,7 @@ class NP_Heap(Function_node):
             self.heap[R_indx] = node_obj
 
         else:  # insert to the left child. #TODO: implement recursive insert.
-            print('Parent children filled')
+            print('ERROR: Parent children filled')
             #self.insert(self,parent_indx = L, value = value )
         return None
 
@@ -302,51 +272,45 @@ class NP_Heap(Function_node):
  # ---------------------------------------------
 
  ####### Main functionalities ###########
-    def randomize_heap(self, parent_idx=0, constant_prob=.6, y_range=(0, 5)):
-        # Check if heap has root
-        if self.has_root() == False:
-            # Add operator rood node if not
-            # ******* WILL MAYBE WANT TO CHANGE ********
-            self.add_root(Function_node(np.random.choice(self.operators)))
+    def Random_Heap(self, Index=1, max_depth=2, const_prob=.5, C_range=(0, 10)):
+        '''
+        this is a function that will be called recursively to build valid trees to every index
+            - Start at a given index (default is root = 1) initialized as an operator
+                - If not initialized it assigns a random operator. 
+            - given operator type, select the number of required children (can = req chlds > chlds)
+            for each:
+                - Check for termination criteria that make the children of that node constants
+                    --> either some random probability or a maximum depth is reached
+                - if not terminated, select a random operator
+                insert that node left to right into the parent children 
+                - note that the node was added so the can add child is accurate. 
 
-        # print("...")
-        #print("Depth:{}\nTree: \n{}".format(self.get_depth(), self.__str__()))
+        '''
 
-        # Kepp adding subtrees up to depth = 1
-        if self.get_depth() < 1:
-            # Add random nodes until sub tree is full
-            while self.heap[parent_idx].can_add_child():
-                rand_val = np.random.rand()
-                print(rand_val, 'less than?', constant_prob)
-                if rand_val < constant_prob:
-                    name = random.choice(self.non_operator)
-                else:
-                    name = random.choice(self.operators)
+        # initialize root.
+        if self.heap[Index] == None:
+            self.heap[Index] = Function_node(np.random.choice(self.operators))
+        while self.heap[Index].can_add_child():  # TODO TEST
+            # TODO heap depth
+            if self.depth() > max_depth - 1 or np.random.rand() < const_prob:  # no operators terminate with constants
+                node_name = np.random.choice(['x', 'const'])
+                node_val = np.random.uniform(
+                    C_range[0], C_range[1]) if node_name == 'const' else None
+            else:
+                node_name = np.random.choice(self.operators)
+                node_val = None
 
-                val = random.uniform(
-                    y_range[0], y_range[1]) if name == 'const' else None
-                new_node = Function_node(name, val)
-                print('adding', name, ' to  ', parent_idx)
-                self.print_arr()
-                self.add_child(parent_idx, new_node)
-                self.print_arr()
+            new_node = Function_node(function_name=node_name, value=node_val)
+            self.insert(parent_indx=Index, node_obj=new_node)
+            # note the addition of a child to break while loop
+            self.heap[Index].add_child_count()
 
-            # Recursively add random subtrees for all children
-            # If subtree is a non_operator it will not loop as num_childs = 0
-            for i in range(self.heap[parent_idx].num_childs):
-                self.randomize_heap(2*parent_idx + i+1)
-
-        # Make sure all operators required number of operands
-        # Thus max depth of tree = 2
-        else:
-            # Add random operands for all children that require them
-            while self.heap[parent_idx].can_add_child():
-                typ = random.choice(self.non_operator)
-                self.add_child(parent_idx, Function_node(
-                    typ, value=random.uniform(0, 5) if typ == 'const' else None))
-            # for i in range(self.heap[parent_idx].num_childs):
-            #    typ = random.choice(self.non_operator)
-            #    self.add_child(2*parent_idx + (i+1), Node(typ, value=random.uniform(0,5) if typ == 'const' else None))
+        L_child, R_child = self.get_children(Index)
+        # self.print_arr()
+        if L_child.function_name in self.operators:
+            self.Random_Heap(2*Index)
+        if R_child.function_name in self.operators:
+            self.Random_Heap(2*Index+1)
 
     # ****  EVALUATE A NODE ***:
     def evaluate(self, node_ind=1, X=None):  # tree root = 1
@@ -458,7 +422,6 @@ class NP_Heap(Function_node):
                 mutation_size = change_prcnt*node.value
                 node.value = node.value + mutation_size * \
                     np.random.choice([-1, 1])
-                self.print_arr()
         return None
 
     def Operator_mutation(self, number):
@@ -487,6 +450,20 @@ class NP_Heap(Function_node):
         # Chooses a tree that evaluates to the same constant through x-range and replaces it by the constant
         return None
 
+    def subtree(self, indx):
+        subtree_ind = [indx]
+        subtree_depth = self.depth() - int(m.floor(m.log2(indx)))  # heap depth - node depth
+        for i in range(1, subtree_depth+1):
+            for j in range(indx*2**i, (indx+1)*2**i):
+                subtree_ind.append(j)
+        return subtree_ind, self.heap[subtree_ind]
+
+ # %%
+R = NP_Heap()
+R.Random_Heap()
+R.print_arr()
+print(R.depth())
+
 
 ##### HEAP CLASS DONE! ####
 # %%
@@ -497,41 +474,29 @@ M1.heap[1] = Function_node('+')
 M1.insert(parent_indx=1, position='L', node_obj=Function_node('*'))
 M1.insert(parent_indx=1, position='R',
           node_obj=Function_node('const', value=1))
-M1.insert(parent_indx=2, position='L', node_obj=Function_node('x'))
+M1.insert(parent_indx=2, position='L', node_obj=Function_node('sin'))
 M1.insert(parent_indx=2, position='R',
           node_obj=Function_node('const', value=3.14))
 M1.insert(parent_indx=3, position='L', node_obj=Function_node('var'))
 M1.insert(parent_indx=3, position='R',
           node_obj=Function_node('const', value=21))
 M1.Constant_Mutation()
+M1.insert(parent_indx=4, position='R',
+          node_obj=Function_node('const', value=2))
+M1.insert(parent_indx=4, position='R',
+          node_obj=Function_node('const', value=69))
 
 
 M1.print_arr()
+subtree, vals = M1.subtree(3)
 
+for el, v in zip(subtree, vals):
+    print(el, v)
 
-# %% ----------------------------------
-# TESTING
-t1 = NP_Heap(length=2)
-t1.heap[0] = Function_node('ERR')
-t1.heap[1] = Function_node('+')
-t1.insert(parent_indx=1, position='L', node_obj=Function_node('sin'))
-t1.insert(parent_indx=1, position='R',
-          node_obj=Function_node('const', value=1))
-t1.insert(parent_indx=2, position='L', node_obj=Function_node('var'))
-t1.insert(parent_indx=2, position='R', node_obj=Function_node('var'))
-t1.insert(parent_indx=3, position='R',
-          node_obj=Function_node('const', value=3.14))
-
-
-t1.evaluate(X=0)
-x_arr = np.linspace(0, 10, 100)
-
-y = [t1.evaluate(X=x) for x in x_arr]
-t1.heap[6] = None
-t1.print_arr()
-#plt.plot(x_arr, y)
-
-#t1.plot_approximation(np.linspace(-5, 5, 100))
+# %%
+R = NP_Heap()
+R.print_arr()
+R.Random_Heap()
 
 # %% -----------------------------------------------------------
 
@@ -548,14 +513,5 @@ print('MSE = ', MSE)
 # %%
 
 # Create a NumPy array (for demonstration purposes)
-arr = np.array([[1, 2, 3],
-                [4, 55, 6],
-                [7, 888, 9]])
-
-# Get the maximum width of each column
-max_width = np.max([len(str(item)) for item in arr])
-
-# Use savetxt with custom formatting
-with np.printoptions(linewidth=np.inf, formatter={'all': lambda x: f'{x:{max_width}}'}):
-    np.savetxt('formatted_array.txt', arr, fmt='%d')
-    print(arr)
+arr = np.arange(12).astype(object)
+print(arr.size)
