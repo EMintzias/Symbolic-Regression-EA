@@ -29,32 +29,37 @@ print('Platinum_data Range =', np.min(
 class Function_node(object):
     # Globals to be inherited
     # last is the header indicator (indexing from 1!)
-    node_types = ('+', '-', '*', '/', '^', 'sin', 'cos', 'const', 'var', 'ERR')
+    node_types = ('+', '-', '*', '/', '^', 'sin', 'cos',
+                  'const', 'x', 'X', 'var', 'ERR')
     dual_operators = ('+', '-', '*', '/', '^')
     single_operators = ('sin', 'cos')
 
     # TODO
 
     def __init__(self, function_name, value=None):
-
+        self.num_childs = 0
+        self.value = value
         # assigning a name in our accepted list
         try:
             if function_name not in self.node_types:
                 raise ValueError(
-                    '"Invalid input. Please enter a valid node type \n\n\t run> heap.node_types for the list"')
+                    F"Invalid input: {function_name}. Please enter a valid node type \n\n\t run> heap.node_types for the list")
             else:
                 self.function_name = function_name
         except ValueError as err_msg:
             # print(err_msg)
             self.function_name = 'ERROR'
             sys.exit()  # exit if there is an issue
-        self.num_childs = 0
 
+        # set number of children gien type
+
+        '''
         if self.function_name == 'const':
             if value == None:
                 self.value = 0  # TODO: np.random.uniform(yrange)
             else:
                 self.value = value
+        '''
 
         if self.function_name in self.dual_operators:
             self.req_num_childs = 2
@@ -63,6 +68,7 @@ class Function_node(object):
         else:
             self.req_num_childs = 0
 
+    # METHODS:
     def add_child_count(self):
         self.num_childs += 1
 
@@ -72,7 +78,7 @@ class Function_node(object):
     def __str__(self):  # print statement
         if self.function_name == 'const':
             return f"{self.value}"
-        elif self.function_name == 'var':
+        elif self.function_name in ['var', 'x', 'X']:
             if self.value:
                 return f"x={self.value}"
             else:
@@ -99,7 +105,7 @@ class NP_Heap(Function_node):
 
  ############# Heap Manipulation #############
 
-    ''' INDEXING AT 1: 
+    # INDEXING AT 1:
     def get_parent_idx(self, child_idx):
         return int(child_idx/2)
 
@@ -161,9 +167,10 @@ class NP_Heap(Function_node):
     def get_children(self, parent_idx):
         child_1_idx, child_2_idx = self.get_children_idx(parent_idx)
         return self.heap[child_1_idx], self.heap[child_2_idx]
+    '''
 
     def get_depth(self):
-        return int(math.floor(math.log2(len(self.heap) + 1)))-1
+        return int(math.floor(math.log2(len(self.heap) + 1)))  # -1
 
     def has_root(self):
         if self.heap[0] == None:
@@ -176,35 +183,6 @@ class NP_Heap(Function_node):
 
     def add_root(self, new_node):
         self.heap[0] = new_node
-
- # ADD FUNCTION
-
-    def add_child(self, parent_idx, new_node):
-        #print("trying to add child for {}".format(parent_idx))
-        # Check if parent can add child
-        # True if can_add_child
-        if self.heap[parent_idx].can_add_child():
-            # Keep track of added child in node
-            self.heap[parent_idx].add_child_count()
-            # Get child number [either 1 or 2 since we're adding above]
-            child_num = self.heap[parent_idx].num_childs
-            # Check if we can add child
-            if 2*parent_idx+child_num < len(self.heap):
-                self.heap[2*parent_idx+child_num] = new_node
-            # Resize if needed
-            else:  # TODO insert type of heap growth for optimization?
-                prev_n = len(self.heap)
-                prev_heap = self.heap
-                # Create new heap that is 'full' to depth where new child will be
-                self.heap = np.full(
-                    2**(math.floor(math.log2(2*parent_idx+child_num + 1))+1)-1, None, dtype=object)
-                self.heap[:prev_n] = prev_heap
-                self.heap[2*parent_idx+child_num] = new_node
-        # Can't add child
-        else:
-            # What to do here?
-            #print("can't add child")
-            pass
 
  # INSERT FUNCTION
     def insert(self, parent_indx, node_obj, position=None):
@@ -239,6 +217,46 @@ class NP_Heap(Function_node):
             print('Parent children filled')
             #self.insert(self,parent_indx = L, value = value )
         return None
+
+  # ADD CHILD FUNCTION
+
+    def add_child(self, parent_idx, new_node):
+        #print("trying to add child for {}".format(parent_idx))
+        # Check if parent can add child
+        # True if can_add_child
+        if self.heap[parent_idx].can_add_child():
+            # Keep track of added child in node
+
+            # Grow array if necessary:
+            while self.heap.size - 1 < self.get_right_child_idx(parent_idx):
+                #print('doubled',self.heap.size ,self.get_right_child_idx(parent_indx)  )
+                self.heap = np.append(self.heap,
+                                      np.full(self.heap.size, None).astype(Function_node))
+
+            # Get child number [either 1 or 2 since we're adding above]
+            child_num = self.heap[parent_idx].num_childs
+            print('inserting at index', 2*parent_idx+child_num+1, child_num)
+            self.heap[2*parent_idx+child_num+1] = new_node
+
+            '''
+            if 2*parent_idx+child_num < len(self.heap):
+                self.heap[2*parent_idx+child_num] = new_node
+            # Resize if needed
+            else:  # TODO insert type of heap growth for optimization?
+                prev_n = len(self.heap)
+                prev_heap = self.heap
+                # Create new heap that is 'full' to depth where new child will be
+                self.heap = np.full(
+                    2**(math.floor(math.log2(2*parent_idx+child_num + 1))+1)-1, None, dtype=object)
+                self.heap[:prev_n] = prev_heap
+                self.heap[2*parent_idx+child_num] = new_node
+            '''
+        # Can't add child
+        else:
+            # What to do here?
+            #print("can't add child")
+            pass
+
  # ---------------------------------------------
 
  ####### DISPLAY FUNCTIONS ##########
@@ -261,7 +279,7 @@ class NP_Heap(Function_node):
     def print_arr(self):  # shows the heap and indexes
         heap_str = [str(node) for node in self.heap]
         ind_arr = np.arange(self.heap.size)
-        print(np.stack((ind_arr, heap_str)))
+        print(np.stack((ind_arr[1:], heap_str[1:])))
         return None
 
     def show_function(self):  # TODO
@@ -284,7 +302,7 @@ class NP_Heap(Function_node):
  # ---------------------------------------------
 
  ####### Main functionalities ###########
-    def randomize_heap(self, parent_idx=0):
+    def randomize_heap(self, parent_idx=0, constant_prob=.6, y_range=(0, 5)):
         # Check if heap has root
         if self.has_root() == False:
             # Add operator rood node if not
@@ -298,10 +316,20 @@ class NP_Heap(Function_node):
         if self.get_depth() < 1:
             # Add random nodes until sub tree is full
             while self.heap[parent_idx].can_add_child():
-                typ = random.choice(self.non_operator) if random.randint(
-                    0, 1) < 1 else random.choice(self.operators)
-                self.add_child(parent_idx, Function_node(
-                    typ, value=random.uniform(0, 5) if typ == 'const' else None))
+                rand_val = np.random.rand()
+                print(rand_val, 'less than?', constant_prob)
+                if rand_val < constant_prob:
+                    name = random.choice(self.non_operator)
+                else:
+                    name = random.choice(self.operators)
+
+                val = random.uniform(
+                    y_range[0], y_range[1]) if name == 'const' else None
+                new_node = Function_node(name, val)
+                print('adding', name, ' to  ', parent_idx)
+                self.print_arr()
+                self.add_child(parent_idx, new_node)
+                self.print_arr()
 
             # Recursively add random subtrees for all children
             # If subtree is a non_operator it will not loop as num_childs = 0
@@ -324,9 +352,8 @@ class NP_Heap(Function_node):
     def evaluate(self, node_ind=1, X=None):  # tree root = 1
         # evaluates a node given its index
         def node_operation(operator, operand):
-
             if operator == '+':
-                return operand[0] + operand[1]
+                return operand[0]+operand[1]
             elif operator == '-':
                 return operand[0] - operand[1]
             elif operator == '*':
@@ -355,7 +382,7 @@ class NP_Heap(Function_node):
         elif L_child.function_name in self.operators:
             L_child.value = self.evaluate(node_ind=2*node_ind, X=X)
 
-        elif L_child.function_name == 'var':
+        elif L_child.function_name in ['var', 'x', 'X']:
             L_child.value = X
 
         if type(R_child) is None:
@@ -364,7 +391,7 @@ class NP_Heap(Function_node):
         elif R_child.function_name in self.operators:
             R_child.value = self.evaluate(node_ind=2*node_ind+1, X=X)
 
-        elif R_child.function_name == 'var':
+        elif R_child.function_name in ['var', 'x', 'X']:
             R_child.value = X
 
         # terminating state: both children are constandts (floats) or Nan (with at least a constant) after being evaluated
@@ -428,13 +455,9 @@ class NP_Heap(Function_node):
         # basic: for node in heap, if name = const +_ X%
         for i, node in enumerate(self.heap):
             if type(node) == Function_node and node.function_name == 'const':
-                print('mutating at pos = ', i)
-                print('Before')
-                self.print_arr()
                 mutation_size = change_prcnt*node.value
                 node.value = node.value + mutation_size * \
                     np.random.choice([-1, 1])
-                print('after')
                 self.print_arr()
         return None
 
@@ -442,11 +465,8 @@ class NP_Heap(Function_node):
         for i, node in enumerate(self.heap):
             if type(node) == Function_node:  # only operate over nodes....
                 if node.function_name == '*':
-                    print('mutating at pos = ', i)
-                    print('Before')
                     self.print_arr()
                     node.function_name = '/'
-                    print('after')
                     self.print_arr()
         return None
 
@@ -470,16 +490,6 @@ class NP_Heap(Function_node):
 
 ##### HEAP CLASS DONE! ####
 # %%
-# Testing randomize heap
-rand_h = NP_Heap()
-rand_h.randomize_heap()
-
-print("-------------")
-
-print(rand_h.get_depth())
-print(rand_h)
-
-# %%
 # Testing Mutation
 M1 = NP_Heap(length=2)
 M1.heap[0] = Function_node('ERR')
@@ -487,12 +497,13 @@ M1.heap[1] = Function_node('+')
 M1.insert(parent_indx=1, position='L', node_obj=Function_node('*'))
 M1.insert(parent_indx=1, position='R',
           node_obj=Function_node('const', value=1))
-M1.insert(parent_indx=2, position='L', node_obj=Function_node('var'))
+M1.insert(parent_indx=2, position='L', node_obj=Function_node('x'))
 M1.insert(parent_indx=2, position='R',
           node_obj=Function_node('const', value=3.14))
-M1.insert(parent_indx=3, position='L', node_obj=Function_node('+'))
+M1.insert(parent_indx=3, position='L', node_obj=Function_node('var'))
 M1.insert(parent_indx=3, position='R',
           node_obj=Function_node('const', value=21))
+M1.Constant_Mutation()
 
 
 M1.print_arr()
