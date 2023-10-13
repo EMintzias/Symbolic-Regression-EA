@@ -431,11 +431,79 @@ class NP_Heap(Function_node):
                 subtree_ind.append(j)
         return subtree_ind, self.heap[subtree_ind]
 # %%
-##########################################
-###     HELPER FUNCTIONS         ####
+###     hill climber         ####
 
 
+def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
+       const_prob=.5, C_range=(-10, 10)):
+    '''
+    This function will search 128 random children and move in the best direction from a random start. 
+
+
+    '''
+    # initialize return functions
+    Best_Function = NP_Heap(length=32)
+    Best_Function.Random_Heap(max_depth=max_depth,
+                              const_prob=const_prob,
+                              C_range=C_range)
+    Min_MSE = Best_Function.MSE(target_data)
+
+    print('Initial \n', Best_Function)
+    print('min MSE', Min_MSE)
+
+    MSE_log = []
+    Improved = True
+    step_num = 0
+    while Improved:
+        Improved = False  # to be flagged true if any of the children is better than the parent
+        # parent of all children to search steps based on the curent best
+        gen_parent = Best_Function.copy()
+        for _ in range(step_search_size):
+            # loops N times testing nearby points
+            step = gen_parent.copy()
+            step.Constant_Mutation(change_prcnt=mutate_prcnt_change)
+            step_MSE = step.MSE(target_data)
+            if step_MSE < Min_MSE:
+                # this will track best step at a position.
+                Best_Function = step
+                Min_MSE = step_MSE
+                Improved = True  # only needs to happen once to be overritedn
+        step_num += 1
+        MSE_log.append([step_num*step_search_size, Min_MSE])
+
+        #print('loop ',step_num, ' DONE' )
+        #print('Best child \n',Best_Function)
+        #print('min MSE', Min_MSE)
+
+    return Best_Function, MSE_log
+
+
+# %% Random starts
+improvement_log = []
+total_evals = 0
+Best_MSE = 1e7
+best_function = None
+for i in range(250):
+    function, mse_arr = HC(search_size=25,
+                           target_data=Bronze_data,
+                           mutate_prcnt_change=.025,
+                           max_depth=4,
+                           const_prob=0.4,
+                           C_range=Y_range_Cu)
+    evals, best_MSE_i = mse_arr[-1]
+    total_evals += evals
+    if best_MSE_i < Best_MSE:
+        improvement_log.append([total_evals, Best_MSE])
+        best_function = function
+
+
+# %%
+print(mse_arr[-1][])
+print(function)
+print(runtime)
+function.plot_approximation(target_data=Bronze_data)
 # %% RANDOM SEARCH
+
 
 def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 10)):
     MSE_log = []
@@ -451,7 +519,7 @@ def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 1
         if MSE_i < best_function_err:
             best_solution = function
             best_function_err = MSE_i
-            MSE_log.append([i, MSE])
+            MSE_log.append([i, MSE_i])
 
     return best_solution, np.array(MSE_log)
 
@@ -471,18 +539,6 @@ print(runtime)
 function.plot_approximation(target_data=Bronze_data)
 
 # %%
-
-
-def copy_heap(given):
-    h = NP_Heap()
-    h.heap = np.copy(given.heap)
-    return h
-
-
-copy = function.copy()
-copy.plot_approximation(target_data=Bronze_data)
-print(copy)
-
 
 ##### HEAP CLASS DONE! ####
 # %%
@@ -513,7 +569,7 @@ print(M2)
 
 # %%
 R = NP_Heap()
-R.print_arr()
+print(R)
 R.Random_Heap()
 
 # %% -----------------------------------------------------------
