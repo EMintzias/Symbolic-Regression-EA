@@ -1,5 +1,5 @@
 # HW_2 Sandbox
-# %%
+# %% FUNCTIONS
 import numpy as np
 import heapq as h
 import seaborn as sns
@@ -9,6 +9,7 @@ import pdb
 import math
 import math as m
 import random
+import time
 # %% --------------------------------------------------
 # LOAD DATA:
 Bronze_data = np.loadtxt("Bronze.txt", dtype=float, delimiter=',')
@@ -29,6 +30,7 @@ Y_range_Ag = (np.min(Silver_data[:, 1]), np.max(Silver_data[:, 1]))
 Y_range_Au = (np.min(Gold_data[:, 1]), np.max(Gold_data[:, 1]))
 Y_range_Pt = (np.min(Platinum_data[:, 1]), np.max(Platinum_data[:, 1]))
 
+print(len(Gold_data))
 # %% -------------------------------------------------
 
 
@@ -152,11 +154,18 @@ class NP_Heap(Function_node):
             return False
         else:
             return True
+
+    def copy(self):
+        h = NP_Heap()
+        h.heap = np.copy(self.heap)
+        return h
+
     # Why not just do this?
     # def has_root(self):
     #   return self.heap[0] != None
 
  # INSERT FUNCTION
+
     def insert(self, parent_indx, node_obj, position=None):
         # check for size availibility or resize
 
@@ -188,58 +197,19 @@ class NP_Heap(Function_node):
             #self.insert(self,parent_indx = L, value = value )
         return None
 
-  # ADD CHILD FUNCTION
-
-    def add_child(self, parent_idx, new_node):
-        #print("trying to add child for {}".format(parent_idx))
-        # Check if parent can add child
-        # True if can_add_child
-        if self.heap[parent_idx].can_add_child():
-            # Keep track of added child in node
-
-            # Grow array if necessary:
-            while self.heap.size - 1 < self.get_right_child_idx(parent_idx):
-                #print('doubled',self.heap.size ,self.get_right_child_idx(parent_indx)  )
-                self.heap = np.append(self.heap,
-                                      np.full(self.heap.size, None).astype(Function_node))
-
-            # Get child number [either 1 or 2 since we're adding above]
-            child_num = self.heap[parent_idx].num_childs
-            print('inserting at index', 2*parent_idx+child_num+1, child_num)
-            self.heap[2*parent_idx+child_num+1] = new_node
-
-            '''
-            if 2*parent_idx+child_num < len(self.heap):
-                self.heap[2*parent_idx+child_num] = new_node
-            # Resize if needed
-            else:  # TODO insert type of heap growth for optimization?
-                prev_n = len(self.heap)
-                prev_heap = self.heap
-                # Create new heap that is 'full' to depth where new child will be
-                self.heap = np.full(
-                    2**(math.floor(math.log2(2*parent_idx+child_num + 1))+1)-1, None, dtype=object)
-                self.heap[:prev_n] = prev_heap
-                self.heap[2*parent_idx+child_num] = new_node
-            '''
-        # Can't add child
-        else:
-            # What to do here?
-            #print("can't add child")
-            pass
-
  # ---------------------------------------------
 
  ####### DISPLAY FUNCTIONS ##########
-    def print_heap_tree(self, index=0, prefix="", is_left=True):  # CALLED BY __str__ method
+    def print_heap_tree(self, index=1, prefix="", is_left=True):  # CALLED BY __str__ method
         output = ""
         if index < len(self.heap) and self.heap[index] is not None:
             # Process right child first (going down)
-            output += self.print_heap_tree(index=2*index+2, prefix=prefix + (
+            output += self.print_heap_tree(index=2*index+1, prefix=prefix + (
                 "|   " if is_left else "    "), is_left=False)
             # Add the current node to the output
             output += prefix + "|-- " + str(self.heap[index]) + "\n"
             # Process left child
-            output += self.print_heap_tree(index=2*index+1, prefix=prefix + (
+            output += self.print_heap_tree(index=2*index, prefix=prefix + (
                 "|   " if not is_left else "    "), is_left=True)
         # else:
             # Indicate the absence of a node with [...]
@@ -249,7 +219,8 @@ class NP_Heap(Function_node):
     def print_arr(self):  # shows the heap and indexes
         heap_str = [str(node) for node in self.heap]
         ind_arr = np.arange(self.heap.size)
-        print(np.stack((ind_arr[1:], heap_str[1:])))
+        max_def = max(ind_arr[self.heap != None])+1
+        print(np.stack((ind_arr[1:max_def], heap_str[1:max_def])))
         return None
 
     def show_function(self):  # TODO
@@ -259,15 +230,17 @@ class NP_Heap(Function_node):
         function_str = None
         return None
 
-    def plot_approximation(self, X_arr, y_pred=None, y_true=None):
+    def plot_approximation(self, X_range=(0, 10), target_data=None, y_pred=None, ):
+        X_arr = np.linspace(X_range[0], X_range[1], 1000)
+
+        if type(target_data) != None:
+            plt.plot(target_data[:, 0], target_data[:, 1])
+
         if not y_pred:
             y_pred = [self.evaluate(X=x) for x in X_arr]
 
         plt.plot(X_arr, y_pred, 'b')
-
-        if y_true:
-            plt.scatter(X_arr, y, c='r')
-
+        plt.show()
         return None
  # ---------------------------------------------
 
@@ -457,17 +430,63 @@ class NP_Heap(Function_node):
             for j in range(indx*2**i, (indx+1)*2**i):
                 subtree_ind.append(j)
         return subtree_ind, self.heap[subtree_ind]
+# %%
+##########################################
+###     HELPER FUNCTIONS         ####
 
- # %%
-R = NP_Heap()
-R.Random_Heap()
-R.print_arr()
-print(R.depth())
+
+# %% RANDOM SEARCH
+
+def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 10)):
+    MSE_log = []
+    best_solution = None
+
+    best_function_err = 1e9
+    for i in range(evaluations):
+        function = NP_Heap(length=32)
+        function.Random_Heap(max_depth=max_depth,
+                             const_prob=const_prob,
+                             C_range=C_range)
+        MSE_i = function.MSE(data)
+        if MSE_i < best_function_err:
+            best_solution = function
+            best_function_err = MSE_i
+            MSE_log.append([i, MSE])
+
+    return best_solution, np.array(MSE_log)
+
+
+start = time.time()
+function, mse_arr = Random_Search(2000,
+                                  data=Bronze_data,
+                                  max_depth=3,
+                                  C_range=Y_range_Cu)
+runtime = time.time() - start
+
+# %%
+out = [str(val) for val in function.heap]
+print(out)
+print(function)
+print(runtime)
+function.plot_approximation(target_data=Bronze_data)
+
+# %%
+
+
+def copy_heap(given):
+    h = NP_Heap()
+    h.heap = np.copy(given.heap)
+    return h
+
+
+copy = function.copy()
+copy.plot_approximation(target_data=Bronze_data)
+print(copy)
 
 
 ##### HEAP CLASS DONE! ####
 # %%
-# Testing Mutation
+# Testing Mutation & subtree
 M1 = NP_Heap(length=2)
 M1.heap[0] = Function_node('ERR')
 M1.heap[1] = Function_node('+')
@@ -488,10 +507,9 @@ M1.insert(parent_indx=4, position='R',
 
 
 M1.print_arr()
-subtree, vals = M1.subtree(3)
-
-for el, v in zip(subtree, vals):
-    print(el, v)
+M2 = M1.copy_heap()
+print(M1)
+print(M2)
 
 # %%
 R = NP_Heap()
@@ -511,7 +529,9 @@ MSE = np.sum(np.square(y_pred-y)/y.shape[0])
 print('MSE = ', MSE)
 
 # %%
-
-# Create a NumPy array (for demonstration purposes)
-arr = np.arange(12).astype(object)
-print(arr.size)
+test = []
+for i in range(10):
+    test.append([i, i**2])
+    pass
+print(test)
+print(np.array(test))
