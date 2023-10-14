@@ -83,6 +83,13 @@ class Function_node(object):
     def can_add_child(self):
         return self.num_childs < self.req_num_childs
 
+    def copy_node(self):
+        # returns a copy of the node
+        new_node = Function_node(function_name=self.function_name,
+                                 value=self.value)
+        new_node.num_childs = self.num_childs
+        return new_node
+
     def __str__(self):  # print statement
         if self.function_name == 'const':
             return f"{self.value}"
@@ -156,8 +163,14 @@ class NP_Heap(Function_node):
             return True
 
     def copy(self):
-        h = NP_Heap()
-        h.heap = np.copy(self.heap)
+        # ERROR HERE! WE had to not just initialize a new heap but also the nodes themselves... duh....
+        h = NP_Heap(length=self.heap.size)
+
+        for i, node in enumerate(self.heap):
+            if node == None:
+                h.heap[i] = None
+            else:
+                h.heap[i] = node.copy_node()
         return h
 
     # Why not just do this?
@@ -387,15 +400,17 @@ class NP_Heap(Function_node):
             - Optimization by consolidating into one function so we dont have to traverse heap. (in practice heap should be small!)
     '''
 
-    def Constant_Mutation(self, change_prcnt=.01):  # TODO
+    # TODO newar zero increase mutation size
+    def Constant_Mutation(self, change_prcnt=.02, min_mutation_range=.05):
         # small change to constants and addition/substraction to variables
         # basic: for node in heap, if name = const +_ X%
-        for i, node in enumerate(self.heap):
+        for node in self.heap:
             if type(node) == Function_node and node.function_name == 'const':
-                mutation_size = change_prcnt*node.value
-                node.value = node.value + mutation_size * \
-                    np.random.choice([-1, 1])
-        return None
+                R = abs(change_prcnt*node.value)
+                # makes sure the change is at least a min for near zero constant
+                Range = max(R, min_mutation_range)
+                node.value += random.uniform(-1*Range, Range)
+        return self
 
     def Operator_mutation(self, number):
         for i, node in enumerate(self.heap):
@@ -430,27 +445,54 @@ class NP_Heap(Function_node):
             for j in range(indx*2**i, (indx+1)*2**i):
                 subtree_ind.append(j)
         return subtree_ind, self.heap[subtree_ind]
-# %%
+# %% RANDOM SEARCH
+#RANDOM & HC
+
+
+def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 10)):
+    MSE_log = []
+    best_solution = None
+
+    best_function_err = 1e9
+    for i in range(evaluations):
+        function = NP_Heap(length=32)
+        function.Random_Heap(max_depth=max_depth,
+                             const_prob=const_prob,
+                             C_range=C_range)
+        MSE_i = function.MSE(data)
+        if MSE_i < best_function_err:
+            best_solution = function
+            best_function_err = MSE_i
+            MSE_log.append([i, MSE_i])
+
+    return best_solution, np.array(MSE_log)
+
+
 ###     hill climber         ####
 
 
 def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
-       const_prob=.5, C_range=(-10, 10)):
+       const_prob=.5, C_range=(-10, 10), given_function=None, Optimized_random=50):
     '''
-    This function will search 128 random children and move in the best direction from a random start. 
-
+    This function will search random children and move in the best direction from an optimized random start. 
 
     '''
-    # initialize return functions
-    Best_Function = NP_Heap(length=32)
-    Best_Function.Random_Heap(max_depth=max_depth,
-                              const_prob=const_prob,
-                              C_range=C_range)
+    if not given_function:
+        # initialize return functions
+        if Optimized_random:  # does a quick random search to eliminate the trash #TODO diversity issue this should be deliberately implemented at the random function level
+            Best_Function, _ = Random_Search(evaluations=47,
+                                             data=target_data,
+                                             max_depth=max_depth,
+                                             C_range=C_range)
+        else:
+            Best_Function = NP_Heap(length=32)
+            Best_Function.Random_Heap(max_depth=max_depth,
+                                      const_prob=const_prob,
+                                      C_range=C_range)
+    else:
+        Best_Function = given_function
+
     Min_MSE = Best_Function.MSE(target_data)
-
-    print('Initial \n', Best_Function)
-    print('min MSE', Min_MSE)
-
     MSE_log = []
     Improved = True
     step_num = 0
@@ -471,37 +513,58 @@ def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
         step_num += 1
         MSE_log.append([step_num*step_search_size, Min_MSE])
 
-        #print('loop ',step_num, ' DONE' )
+        print('loop ', step_num, ' DONE')
         #print('Best child \n',Best_Function)
-        #print('min MSE', Min_MSE)
+        print('min MSE', Min_MSE)
 
     return Best_Function, MSE_log
+# Random starts
 
 
-# %% Random starts
-improvement_log = []
-total_evals = 0
-Best_MSE = 1e7
-best_function = None
-for i in range(250):
-    function, mse_arr = HC(search_size=25,
-                           target_data=Bronze_data,
-                           mutate_prcnt_change=.025,
-                           max_depth=4,
-                           const_prob=0.4,
-                           C_range=Y_range_Cu)
-    evals, best_MSE_i = mse_arr[-1]
-    total_evals += evals
-    if best_MSE_i < Best_MSE:
-        improvement_log.append([total_evals, Best_MSE])
-        best_function = function
+def RSHC(Starts, target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.02,
+         const_prob=.5, C_range=(-10, 10), Optimized_random=True):
+
+    improvement_log = []
+    total_evals = 0
+    Best_MSE = 1e7
+    best_function = None
+    for i in range(Starts):
+        print('**** START = ', i, ' *****')
+        function, mse_arr = HC(step_search_size=step_search_size,
+                               target_data=target_data,
+                               mutate_prcnt_change=mutate_prcnt_change,
+                               max_depth=max_depth,
+                               const_prob=const_prob,
+                               C_range=C_range,
+                               Optimized_random=Optimized_random)
+        evals, best_MSE_i = mse_arr[-1]
+        total_evals += evals
+        if best_MSE_i < Best_MSE:
+            improvement_log.append([total_evals, best_MSE_i])
+            best_function = function
+            Best_MSE = best_MSE_i
+    return best_function, improvement_log
+
+
+# %% RUN RSHC
+best_function, performance_log = RSHC(Starts=10,
+                                      step_search_size=25,
+                                      mutate_prcnt_change=.08,
+                                      target_data=Bronze_data,
+                                      max_depth=3,
+                                      C_range=Y_range_Cu,
+                                      Optimized_random=100)
+print(best_function, '\n MSE= ', best_function.MSE(Bronze_data))
+best_function.plot_approximation(target_data=Bronze_data)
 
 
 # %%
-print(mse_arr[-1][])
-print(function)
-print(runtime)
-function.plot_approximation(target_data=Bronze_data)
+print(best_function, '\n MSE= ', best_function.MSE(Bronze_data))
+best_function.plot_approximation(target_data=Bronze_data)
+
+# %%
+
+
 # %% RANDOM SEARCH
 
 
@@ -525,23 +588,44 @@ def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 1
 
 
 start = time.time()
-function, mse_arr = Random_Search(2000,
+function, mse_arr = Random_Search(25,
                                   data=Bronze_data,
                                   max_depth=3,
                                   C_range=Y_range_Cu)
 runtime = time.time() - start
+function.plot_approximation(target_data=Bronze_data)
 
-# %%
-out = [str(val) for val in function.heap]
-print(out)
+# %% Testing Individual HC
 print(function)
 print(runtime)
 function.plot_approximation(target_data=Bronze_data)
-
 # %%
+function.plot_approximation(target_data=Bronze_data)
+new_f = function.copy()
+print(new_f, '\n MSE= ', new_f.MSE(Bronze_data))
+HC_function, mse_arr = HC(step_search_size=300,
+                          target_data=Bronze_data,
+                          mutate_prcnt_change=.01,
+                          max_depth=4,
+                          const_prob=0.4,
+                          C_range=Y_range_Cu,
+                          given_function=new_f)
+print(HC_function, '\n MSE= ', HC_function.MSE(Bronze_data))
+HC_function.plot_approximation(target_data=Bronze_data)
 
 ##### HEAP CLASS DONE! ####
 # %%
+## TESTING EA (Simple architecture) ##
+
+
+def generate_pop(size):
+    # returns population of functions in
+
+
+def EP_Symbolic_Rgresion(target_data):
+    def greate population
+
+
 # Testing Mutation & subtree
 M1 = NP_Heap(length=2)
 M1.heap[0] = Function_node('ERR')
@@ -566,28 +650,3 @@ M1.print_arr()
 M2 = M1.copy_heap()
 print(M1)
 print(M2)
-
-# %%
-R = NP_Heap()
-print(R)
-R.Random_Heap()
-
-# %% -----------------------------------------------------------
-
-data = Bronze_data
-x = Bronze_data[:, 0]
-y = Bronze_data[:, 1]
-plt.plot(x, y)
-
-y_pred = np.array([(x-3.5)**2 - 15.2 for x in Bronze_data[:, 0]])
-plt.plot(x, y_pred, 'r')
-MSE = np.sum(np.square(y_pred-y)/y.shape[0])
-print('MSE = ', MSE)
-
-# %%
-test = []
-for i in range(10):
-    test.append([i, i**2])
-    pass
-print(test)
-print(np.array(test))
