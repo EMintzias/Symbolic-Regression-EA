@@ -8,6 +8,7 @@ import sys
 import pdb
 import math
 import math as m
+from icecream import ic
 import random
 import time
 # %% --------------------------------------------------
@@ -92,7 +93,7 @@ class Function_node(object):
 
     def __str__(self):  # print statement
         if self.function_name == 'const':
-            return f"{self.value}"
+            return f"{round(self.value,2)}"
         elif self.function_name in ['var', 'x', 'X']:
             if self.value:
                 return f"x={self.value}"
@@ -108,12 +109,22 @@ class Function_node(object):
 # inspiration: https://github.com/swacad/numpy-heap/blob/master/heap.py
 # Starting at index 1~
 class NP_Heap(Function_node):
-    def __init__(self, length=2, Randomize=False, max_depth=4, const_prob=.45, C_range=(-10, 10)):
+    def __init__(self, length=2, Heap=None, Randomize=False, max_depth=4, const_prob=.45, C_range=(-10, 10)):
         self.heap = np.full(length, None, dtype=object)
         # ALL Operators ('+', '-', '*', '/', '^', 'sin', 'cos')
         self.operators = ('*', '+', '-')
         self.trig_operators = ('sin', 'cos')
         self.non_operator = ('x', 'const')
+
+        # Creating ARR from given heap list
+        '''
+        if type(Heap) == None: 
+            
+        else: 
+            self.heap = np.full(len(Heap), None, dtype=object)
+            for i,val in enumerate(Heap): #heap is a list of values indexed at 0
+                self.heap[i+1] = val 
+        '''
 
         if Randomize:
             self.Random_Heap(max_depth=max_depth,
@@ -264,7 +275,7 @@ class NP_Heap(Function_node):
  # ---------------------------------------------
 
  ####### Main functionalities ###########
-    def Random_Heap(self, Index=1, max_depth=2, const_prob=.5, C_range=(0, 10)):
+    def Random_Heap(self, Index=1, max_depth=4, const_prob=.4, C_range=(-10, 10)):
         '''
         this is a function that will be called recursively to build valid trees to every index
             - Start at a given index (default is root = 1) initialized as an operator
@@ -278,13 +289,12 @@ class NP_Heap(Function_node):
                 - note that the node was added so the can add child is accurate. 
 
         '''
-
         # initialize root.
         if self.heap[Index] == None:
             self.heap[Index] = Function_node(np.random.choice(self.operators))
         while self.heap[Index].can_add_child():  # TODO TEST
             # TODO heap depth
-            if self.depth() > max_depth - 1 or np.random.rand() < const_prob:  # no operators terminate with constants
+            if self.depth() >= max_depth - 1 or np.random.rand() < const_prob:  # no operators terminate with constants
                 node_name = np.random.choice(['x', 'const'])
                 node_val = np.random.uniform(
                     C_range[0], C_range[1]) if node_name == 'const' else None
@@ -300,9 +310,11 @@ class NP_Heap(Function_node):
         L_child, R_child = self.get_children(Index)
         # self.print_arr()
         if L_child.function_name in self.operators:
-            self.Random_Heap(2*Index)
+            self.Random_Heap(Index=2*Index, max_depth=max_depth,
+                             const_prob=const_prob, C_range=C_range)
         if R_child.function_name in self.operators:
-            self.Random_Heap(2*Index+1)
+            self.Random_Heap(2*Index+1, max_depth=max_depth,
+                             const_prob=const_prob, C_range=C_range)
 
     # ****  EVALUATE A NODE ***:
     def evaluate(self, node_ind=1, X=None):  # tree root = 1
@@ -396,7 +408,7 @@ class NP_Heap(Function_node):
             self.plot_approximation(X_arr, y_pred, y_true=y)
         return MSE
 
- # EP: MUTATION ########## :
+ # #### EP Functions ########## :
     '''
         IDEAS: 
             - Most vanilla: search through heap for the constants and +_ by X small % of the value
@@ -407,18 +419,18 @@ class NP_Heap(Function_node):
     '''
 
     # TODO newar zero increase mutation size
-    def Constant_Mutation(self, change_prcnt=.02, min_mutation_range=.05):
+    def Constant_Mutation(self, change_prcnt=.02, min_mutation=.05):
         # small change to constants and addition/substraction to variables
         # basic: for node in heap, if name = const +_ X%
         for node in self.heap:
             if type(node) == Function_node and node.function_name == 'const':
                 R = abs(change_prcnt*node.value)
                 # makes sure the change is at least a min for near zero constant
-                Range = max(R, min_mutation_range)
+                Range = max(R, min_mutation)
                 node.value += random.uniform(-1*Range, Range)
         return self
 
-    def Operator_mutation(self, number):
+    def Operator_Mutation(self, swap_num=1):
         for i, node in enumerate(self.heap):
             if type(node) == Function_node:  # only operate over nodes....
                 if node.function_name == '*':
@@ -450,16 +462,14 @@ class NP_Heap(Function_node):
         for i in range(1, subtree_depth+1):
             for j in range(indx*2**i, (indx+1)*2**i):
                 subtree_ind.append(j)
+
         return subtree_ind, self.heap[subtree_ind]
 # %%
 # Testing new heap functionality
 
 
-h = NP_Heap(Randomize=True, max_depth=4, const_prob=.3)
-print(h)
-
 # %% RANDOM SEARCH
-#RANDOM & HC
+###### RANDOM & HC ###############
 
 
 def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 10)):
@@ -481,6 +491,8 @@ def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 1
 
 
 ###     hill climber         ####
+# TODO Improve mutation this is very slow
+# TODO implement operator mutations
 def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
        const_prob=.5, C_range=(-10, 10), given_function=None, Optimized_random=50):
     '''
@@ -489,7 +501,8 @@ def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
     '''
     if not given_function:
         # initialize return functions
-        if Optimized_random:  # does a quick random search to eliminate the trash #TODO diversity issue this should be deliberately implemented at the random function level
+        if Optimized_random:  # does a quick random search to eliminate the trash
+            # TODO diversity issue this should be deliberately implemented at the random function level
             Best_Function, _ = Random_Search(evaluations=47,
                                              data=target_data,
                                              max_depth=max_depth,
@@ -554,6 +567,18 @@ def RSHC(Starts, target_data, step_search_size=128, max_depth=3, mutate_prcnt_ch
             best_function = function
             Best_MSE = best_MSE_i
     return best_function, improvement_log
+# %%
+
+#  RUN RANDOM SEARCH
+
+
+start = time.time()
+function, mse_arr = Random_Search(2000,
+                                  data=Bronze_data,
+                                  max_depth=3,
+                                  C_range=Y_range_Cu)
+runtime = time.time() - start
+function.plot_approximation(target_data=Bronze_data)
 
 
 # %% RUN RSHC
@@ -569,48 +594,23 @@ best_function.plot_approximation(target_data=Bronze_data)
 
 
 # %%
+# PRINT RSHC RESULTS
 print(best_function, '\n MSE= ', best_function.MSE(Bronze_data))
 best_function.plot_approximation(target_data=Bronze_data)
 
 # %%
-
-
-# %%
-#  RUN RANDOM SEARCH
-
-start = time.time()
-function, mse_arr = Random_Search(2000,
-                                  data=Bronze_data,
-                                  max_depth=3,
-                                  C_range=Y_range_Cu)
-runtime = time.time() - start
-function.plot_approximation(target_data=Bronze_data)
-
-# %% Testing Individual HC
-print(function)
-print(runtime)
-function.plot_approximation(target_data=Bronze_data)
-# %%
-function.plot_approximation(target_data=Bronze_data)
-new_f = function.copy()
-print(new_f, '\n MSE= ', new_f.MSE(Bronze_data))
-HC_function, mse_arr = HC(step_search_size=300,
-                          target_data=Bronze_data,
-                          mutate_prcnt_change=.01,
-                          max_depth=4,
-                          const_prob=0.4,
-                          C_range=Y_range_Cu,
-                          given_function=new_f)
-print(HC_function, '\n MSE= ', HC_function.MSE(Bronze_data))
-HC_function.plot_approximation(target_data=Bronze_data)
-
-##### HEAP CLASS DONE! ####
-# %%
-## TESTING EA (Simple architecture) ##
+## **** EVOLUTIONARY ALGOSSSS ***** ##
+# TODO test pop initialization (straight fwd)
+# TODO test turnament selection
+# TODO robust crossover (not stress tested)
+# TODO implement better mutation (currently just constants by +_2% (very slow))
 
 
 def initialize_popuplation(pop_size, tree_depth=4, const_prob=.35, init_Constant_Range=(-10, 10)):
     # returns population of functions in
+    if pop_size % 2:
+        pop_size += 1  # ensure population num is even
+
     Population = np.full(pop_size, None)
     for i in range(pop_size):
         Population[i] = NP_Heap(Randomize=True,
@@ -620,17 +620,18 @@ def initialize_popuplation(pop_size, tree_depth=4, const_prob=.35, init_Constant
     return Population
 
 
-def selection(population, target_data):
+def selection(population, data):
     # returns parent-children pairs
 
     # Simple turnament selection:
     def turnament_selection(population, data, bracket_size=8):
-        Subset = np.random.choice()
+        Subset = np.random.choice(population, bracket_size)
         fitness = np.array(F.MSE(data) for F in Subset)
         best = Subset[np.argmin(fitness)]
+        return best
 
-    Parent_1 = turnament_selection(population, target_data)
-    Parent_2 = turnament_selection(population, target_data)
+    Parent_1 = turnament_selection(population, data)
+    Parent_2 = turnament_selection(population, data)
 
     return Parent_1, Parent_2
 
@@ -638,17 +639,19 @@ def selection(population, target_data):
 def Crossover(Parent_1, Parent_2, at_node=None):
     P1, P2 = Parent_1, Parent_2
     # confirm both have parent or choose form a both parent
-    if at_node = None:
+    if at_node == None:
         p1_populated_ind = np.arange(P1.heap.size)[P1.heap != None]
         p2_populated_ind = np.arange(P2.heap.size)[P2.heap != None]
         common_ind = np.intersect1d(p1_populated_ind, p2_populated_ind)
         at_node = np.random.choice(common_ind)
-
+    print(
+        f'at node = {at_node}: P1 = {P1.heap[at_node]}  P2 = {P2.heap[at_node]}')
     p1_subtree_ind, p1_subtree_nodes = P1.subtree(at_node)
     p2_subtree_ind, p2_subtree_nodes = P2.subtree(at_node)
 
     Len = max(P1.heap.size, P2.heap.size)
-    C1, C2 = P1.copy(Len), P2.copy(Len)
+    C1 = P1.copy(Len)
+    C2 = P2.copy(Len)
     # TODO add conditionals for growing array in case there is an indexing issue.
     C1.heap[p1_subtree_ind] = p2_subtree_nodes
     C2.heap[p2_subtree_ind] = p1_subtree_nodes
@@ -656,44 +659,79 @@ def Crossover(Parent_1, Parent_2, at_node=None):
     return C1, C2
 
 
-def EP_Symbolic_Rgresion(target_data):
-    Population = initialize_popuplation(pop_size=50)
+def Population_Crossover(Population, target_data):
+    p_size = len(Population)
+    new_pop = np.full(p_size, None, dtype=object)
+
+    for i in range(0, p_size, 2):
+        Parent_1, Parent_2 = selection(population=Population, data=target_data)
+        Child_1, Child_2 = Crossover(Parent_1, Parent_2, at_node=None)
+        new_pop[i], new_pop[i+1] = Child_1, Child_2
+    return new_pop
 
 
-# Testing Mutation & subtree
-M1 = NP_Heap(length=2)
-M1.heap[0] = Function_node('ERR')
-M1.heap[1] = Function_node('+')
-M1.insert(parent_indx=1, position='L', node_obj=Function_node('*'))
-M1.insert(parent_indx=1, position='R',
-          node_obj=Function_node('const', value=1))
-M1.insert(parent_indx=2, position='L', node_obj=Function_node('sin'))
-M1.insert(parent_indx=2, position='R',
-          node_obj=Function_node('const', value=3.14))
-M1.insert(parent_indx=3, position='L', node_obj=Function_node('var'))
-M1.insert(parent_indx=3, position='R',
-          node_obj=Function_node('const', value=21))
-M1.Constant_Mutation()
-M1.insert(parent_indx=4, position='R',
-          node_obj=Function_node('const', value=2))
-M1.insert(parent_indx=4, position='R',
-          node_obj=Function_node('const', value=69))
+def Population_Mutation(Population,
+                        Constant_Mutation=True, change_prcnt=.02, min_mutation=.05,
+                        Operator_Mutation=True, swap_num=1):
+    for function in Population:
+        if Constant_Mutation:
+            function.Constant_Mutation(change_prcnt=change_prcnt,
+                                       min_mutation=min_mutation)
+        if Operator_Mutation:
+            function.Operator_Mutation(swap_num=swap_num)
+
+    return Population
 
 
-M1.print_arr()
-M2 = M1.copy_heap()
-print(M1)
-print(M2)
+def EP_Symbolic_Rgresion(target_data, pop_size=50, generations=1000):
+    Population = initialize_popuplation(pop_size=pop_size)
+    for _ in range(generations):
+        # calls selection and crossover funcs for each pair
+        Population = Population_Crossover(Population, target_data)
+        Population = Population_Mutation(Population)
+
+        # WHAT TO RETURN FOR PLOTTIONG:
+
+    return Population
+
 
 # %%
+# Testing EP
+np.random.seed(25)
+h1 = NP_Heap(Randomize=True, max_depth=4, const_prob=.3)
+h2 = NP_Heap(Randomize=True, max_depth=4, const_prob=.3)
+# print(h1)
+# print(h2)
+# h1.print_arr()
+# h2.print_arr()
 
-# Create two NumPy arrays
-arr1 = np.array([1, 2, 3, 4, 5])
-arr2 = np.array([3, 4, 5, 6, 7])
+s1_ind, s1_vals = h1.subtree(2)
+s2_ind, s2_vals = h2.subtree(2)
 
-# Find the index where elements are common in both arrays
-common_indices = np.where(np.isin(arr1, arr2))
+C1, C2 = Crossover(h1, h2, at_node=2)
 
-print("Array 1:", arr1)
-print("Array 2:", arr2)
-print("Common Indices:", common_indices[0])
+print('before')
+print(h1)
+print(h2)
+print('After')
+print(C1)
+print(C2)
+
+'''
+#testing the subtree print
+print(s_ind)
+tree_str = [None]
+for v in s_vals: 
+    tree_str.append(v)
+    
+new_h = NP_Heap(length=len(tree_str))
+new_h.heap = tree_str
+print(new_h)
+'''
+
+# %%
+c = 1569954
+print(c)
+if c % 2:
+    c += 1
+print(c)
