@@ -108,12 +108,17 @@ class Function_node(object):
 # inspiration: https://github.com/swacad/numpy-heap/blob/master/heap.py
 # Starting at index 1~
 class NP_Heap(Function_node):
-    def __init__(self, length=2):
+    def __init__(self, length=2, Randomize=False, max_depth=4, const_prob=.45, C_range=(-10, 10)):
         self.heap = np.full(length, None, dtype=object)
         # ALL Operators ('+', '-', '*', '/', '^', 'sin', 'cos')
         self.operators = ('*', '+', '-')
         self.trig_operators = ('sin', 'cos')
         self.non_operator = ('x', 'const')
+
+        if Randomize:
+            self.Random_Heap(max_depth=max_depth,
+                             const_prob=const_prob,
+                             C_range=C_range)
 
     def __str__(self):
         return self.print_heap_tree()
@@ -162,9 +167,10 @@ class NP_Heap(Function_node):
         else:
             return True
 
-    def copy(self):
+    def copy(self, given_len=None):  # TODO Test
         # ERROR HERE! WE had to not just initialize a new heap but also the nodes themselves... duh....
-        h = NP_Heap(length=self.heap.size)
+        length = given_len if given_len else self.heap.size
+        h = NP_Heap(length=length)
 
         for i, node in enumerate(self.heap):
             if node == None:
@@ -445,6 +451,13 @@ class NP_Heap(Function_node):
             for j in range(indx*2**i, (indx+1)*2**i):
                 subtree_ind.append(j)
         return subtree_ind, self.heap[subtree_ind]
+# %%
+# Testing new heap functionality
+
+
+h = NP_Heap(Randomize=True, max_depth=4, const_prob=.3)
+print(h)
+
 # %% RANDOM SEARCH
 #RANDOM & HC
 
@@ -455,10 +468,9 @@ def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 1
 
     best_function_err = 1e9
     for i in range(evaluations):
-        function = NP_Heap(length=32)
-        function.Random_Heap(max_depth=max_depth,
-                             const_prob=const_prob,
-                             C_range=C_range)
+        function = NP_Heap(Randomize=True, max_depth=max_depth,
+                           const_prob=const_prob,
+                           C_range=C_range)
         MSE_i = function.MSE(data)
         if MSE_i < best_function_err:
             best_solution = function
@@ -469,8 +481,6 @@ def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 1
 
 
 ###     hill climber         ####
-
-
 def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
        const_prob=.5, C_range=(-10, 10), given_function=None, Optimized_random=50):
     '''
@@ -565,30 +575,11 @@ best_function.plot_approximation(target_data=Bronze_data)
 # %%
 
 
-# %% RANDOM SEARCH
-
-
-def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 10)):
-    MSE_log = []
-    best_solution = None
-
-    best_function_err = 1e9
-    for i in range(evaluations):
-        function = NP_Heap(length=32)
-        function.Random_Heap(max_depth=max_depth,
-                             const_prob=const_prob,
-                             C_range=C_range)
-        MSE_i = function.MSE(data)
-        if MSE_i < best_function_err:
-            best_solution = function
-            best_function_err = MSE_i
-            MSE_log.append([i, MSE_i])
-
-    return best_solution, np.array(MSE_log)
-
+# %%
+#  RUN RANDOM SEARCH
 
 start = time.time()
-function, mse_arr = Random_Search(25,
+function, mse_arr = Random_Search(2000,
                                   data=Bronze_data,
                                   max_depth=3,
                                   C_range=Y_range_Cu)
@@ -618,12 +609,55 @@ HC_function.plot_approximation(target_data=Bronze_data)
 ## TESTING EA (Simple architecture) ##
 
 
-def generate_pop(size):
+def initialize_popuplation(pop_size, tree_depth=4, const_prob=.35, init_Constant_Range=(-10, 10)):
     # returns population of functions in
+    Population = np.full(pop_size, None)
+    for i in range(pop_size):
+        Population[i] = NP_Heap(Randomize=True,
+                                max_depth=tree_depth,
+                                const_prob=const_prob,
+                                C_range=init_Constant_Range)
+    return Population
+
+
+def selection(population, target_data):
+    # returns parent-children pairs
+
+    # Simple turnament selection:
+    def turnament_selection(population, data, bracket_size=8):
+        Subset = np.random.choice()
+        fitness = np.array(F.MSE(data) for F in Subset)
+        best = Subset[np.argmin(fitness)]
+
+    Parent_1 = turnament_selection(population, target_data)
+    Parent_2 = turnament_selection(population, target_data)
+
+    return Parent_1, Parent_2
+
+
+def Crossover(Parent_1, Parent_2, at_node=None):
+    P1, P2 = Parent_1, Parent_2
+    # confirm both have parent or choose form a both parent
+    if at_node = None:
+        p1_populated_ind = np.arange(P1.heap.size)[P1.heap != None]
+        p2_populated_ind = np.arange(P2.heap.size)[P2.heap != None]
+        common_ind = np.intersect1d(p1_populated_ind, p2_populated_ind)
+        at_node = np.random.choice(common_ind)
+
+    p1_subtree_ind, p1_subtree_nodes = P1.subtree(at_node)
+    p2_subtree_ind, p2_subtree_nodes = P2.subtree(at_node)
+
+    Len = max(P1.heap.size, P2.heap.size)
+    C1, C2 = P1.copy(Len), P2.copy(Len)
+    # TODO add conditionals for growing array in case there is an indexing issue.
+    C1.heap[p1_subtree_ind] = p2_subtree_nodes
+    C2.heap[p2_subtree_ind] = p1_subtree_nodes
+
+    return C1, C2
 
 
 def EP_Symbolic_Rgresion(target_data):
-    def greate population
+    Population = initialize_popuplation(pop_size=50)
 
 
 # Testing Mutation & subtree
@@ -650,3 +684,16 @@ M1.print_arr()
 M2 = M1.copy_heap()
 print(M1)
 print(M2)
+
+# %%
+
+# Create two NumPy arrays
+arr1 = np.array([1, 2, 3, 4, 5])
+arr2 = np.array([3, 4, 5, 6, 7])
+
+# Find the index where elements are common in both arrays
+common_indices = np.where(np.isin(arr1, arr2))
+
+print("Array 1:", arr1)
+print("Array 2:", arr2)
+print("Common Indices:", common_indices[0])
