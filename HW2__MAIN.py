@@ -274,6 +274,38 @@ class NP_Heap(Function_node):
         plt.plot(X_arr, y_pred, 'b')
         plt.show()
         return None
+
+    def build_function(self, index=1):
+        # CGPT Func
+        heap_array = self.heap
+        # Base case: if the index is out of bounds or the node is None, return an empty string
+        if index >= len(heap_array) or heap_array[index] is None:
+            return ""
+
+        # Get the current node's value
+        current_node = str(heap_array[index])
+
+        # Define operators with higher precedence
+        higher_precedence = ['*', '/', 'sin', 'cos']
+
+        # Get the left and right child indices
+        left_child_index = 2 * index
+        right_child_index = 2 * index + 1
+
+        # Recursively build the left and right subtrees
+        left_subtree = build_function(heap_array, left_child_index)
+        right_subtree = build_function(heap_array, right_child_index)
+
+        # Check if parentheses are needed around children
+        if left_subtree and current_node in higher_precedence:
+            left_subtree = f"({left_subtree})"
+        if right_subtree and current_node in higher_precedence:
+            right_subtree = f"({right_subtree})"
+
+        # Combine the current node, left subtree, and right subtree to form the expression
+        expression = f"{left_subtree}{current_node}{right_subtree}" if left_subtree or right_subtree else current_node
+
+        return expression
  # ---------------------------------------------
 
  ####### Main functionalities ###########
@@ -747,13 +779,12 @@ def EP_Symbolic_Rgresion(target_data, pop_size=10, generations=50):
 
 
 # %%
+np.random.seed(6)
+random.seed(6)
 pop_test = initialize_popuplation(pop_size=3)
-for f in pop_test:
-    print(f)
-pop_test = Population_Mutation(pop_test)
-for f in pop_test:
-    print(f)
+f = pop_test[0]
 
+print(f.build_function())
 
 # %%
 # TEst GP:
