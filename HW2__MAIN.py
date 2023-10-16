@@ -1,5 +1,6 @@
 # HW_2 Sandbox
 # %% FUNCTIONS
+from tqdm import tqdm
 import numpy as np
 import heapq as h
 import seaborn as sns
@@ -9,6 +10,7 @@ import pdb
 import math
 import math as m
 from icecream import ic
+import pandas as pd
 import random
 import time
 # %% --------------------------------------------------
@@ -306,6 +308,7 @@ class NP_Heap(Function_node):
             self.insert(parent_indx=Index, node_obj=new_node)
             # note the addition of a child to break while loop
             self.heap[Index].add_child_count()
+        # TODO maybe immediately prune/consolidate shity nodes
 
         L_child, R_child = self.get_children(Index)
         # self.print_arr()
@@ -319,6 +322,7 @@ class NP_Heap(Function_node):
     # ****  EVALUATE A NODE ***:
     def evaluate(self, node_ind=1, X=None):  # tree root = 1
         # evaluates a node given its index
+
         def node_operation(operator, operand):
             if operator == '+':
                 return operand[0]+operand[1]
@@ -327,6 +331,8 @@ class NP_Heap(Function_node):
             elif operator == '*':
                 return operand[0] * operand[1]
             elif operator == '/':
+                if operand[1] == 0:
+                    return 1.0e6
                 return operand[0] / operand[1]
             elif operator == '^':
                 return operand[0] ** operand[1]
@@ -399,6 +405,7 @@ class NP_Heap(Function_node):
 
     def MSE(self, point_cloud, plotting=False):
         # RECALL: MSE = (1/n) * Σ(actual – forecast) ^2
+        # TODO subsection (skip every other point)
         X_arr = point_cloud[:, 0]
         y = point_cloud[:, 1]
         y_pred = np.array([self.evaluate(X=x) for x in X_arr])
@@ -434,9 +441,9 @@ class NP_Heap(Function_node):
         for i, node in enumerate(self.heap):
             if type(node) == Function_node:  # only operate over nodes....
                 if node.function_name == '*':
-                    self.print_arr()
+                    # self.print_arr()
                     node.function_name = '/'
-                    self.print_arr()
+                    # self.print_arr()
         return None
 
     ##### BLOAT PROBLEM ####
@@ -455,6 +462,15 @@ class NP_Heap(Function_node):
     def hoist_mutation(self):  # TODO
         # Chooses a tree that evaluates to the same constant through x-range and replaces it by the constant
         return None
+
+    # TODO
+    def Random_subtree(self):
+        # adds random subtree to some function
+        pass
+
+    def NUCLEAR_DIVERSIY(self):
+        #
+        pass
 
     def subtree(self, indx):
         subtree_ind = [indx]
@@ -494,7 +510,7 @@ def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 1
 # TODO Improve mutation this is very slow
 # TODO implement operator mutations
 def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
-       const_prob=.5, C_range=(-10, 10), given_function=None, Optimized_random=50):
+       const_prob=.5, C_range=(-10, 10), given_function=None, Optimized_random=0):
     '''
     This function will search random children and move in the best direction from an optimized random start. 
 
@@ -503,7 +519,7 @@ def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
         # initialize return functions
         if Optimized_random:  # does a quick random search to eliminate the trash
             # TODO diversity issue this should be deliberately implemented at the random function level
-            Best_Function, _ = Random_Search(evaluations=47,
+            Best_Function, _ = Random_Search(evaluations=Optimized_random,
                                              data=target_data,
                                              max_depth=max_depth,
                                              C_range=C_range)
@@ -545,7 +561,7 @@ def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
 
 
 def RSHC(Starts, target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.02,
-         const_prob=.5, C_range=(-10, 10), Optimized_random=True):
+         const_prob=.5, C_range=(-10, 10), Optimized_random=0):
 
     improvement_log = []
     total_evals = 0
@@ -599,8 +615,7 @@ print(best_function, '\n MSE= ', best_function.MSE(Bronze_data))
 best_function.plot_approximation(target_data=Bronze_data)
 
 # %%
-## **** EVOLUTIONARY ALGOSSSS ***** ##
-# TODO test pop initialization (straight fwd)
+## **** EVOLUTIONARY ALGOS ***** ##
 # TODO test turnament selection
 # TODO robust crossover (not stress tested)
 # TODO implement better mutation (currently just constants by +_2% (very slow))
@@ -622,18 +637,29 @@ def initialize_popuplation(pop_size, tree_depth=4, const_prob=.35, init_Constant
 
 def selection(population, data):
     # returns parent-children pairs
-
     # Simple turnament selection:
-    def turnament_selection(population, data, bracket_size=8):
-        Subset = np.random.choice(population, bracket_size)
-        fitness = np.array(F.MSE(data) for F in Subset)
-        best = Subset[np.argmin(fitness)]
-        return best
+    def Ranked(population, data, min_percentile=0, max_percentile=50):
+        fitness_ind = np.argsort(np.array([F.MSE(data) for F in population]))
 
+    def turnament_selection(population, data, bracket_size=8):
+        # returs best in subset (probability that top x% is in subset(s) is obv 1-(1-x)^s )
+        Subset = np.random.choice(population, bracket_size)
+        fitness = np.array([F.MSE(data) for F in Subset])
+        return Subset[np.argmin(fitness)]
+
+    def percentile_selection(population, data, subset_size=10, percentile=40):
+        # returs Nth best percentile in the subset #TODO automate subset size best on percentail to a 95% CI
+        Subset = np.random.choice(population, subset_size)
+        fitness_ind = np.argsort(np.array([F.MSE(data) for F in Subset]))
+        print(f'fitness 2 : \n {fitness_ind}')
+        return Subset[fitness_ind[round(subset_size*(1-percentile)/100)]]
+
+    # basic strategy: turnament best
+    # TODO cross with shitty peple
     Parent_1 = turnament_selection(population, data)
     Parent_2 = turnament_selection(population, data)
 
-    return Parent_1, Parent_2
+    return Parent_1, Parent_2,
 
 
 def Crossover(Parent_1, Parent_2, at_node=None):
@@ -643,18 +669,19 @@ def Crossover(Parent_1, Parent_2, at_node=None):
         p1_populated_ind = np.arange(P1.heap.size)[P1.heap != None]
         p2_populated_ind = np.arange(P2.heap.size)[P2.heap != None]
         common_ind = np.intersect1d(p1_populated_ind, p2_populated_ind)
-        at_node = np.random.choice(common_ind)
-    print(
-        f'at node = {at_node}: P1 = {P1.heap[at_node]}  P2 = {P2.heap[at_node]}')
+        # TODO ELIMINATE ROOT SWAPS
+        at_node = np.random.choice(common_ind[common_ind != 1])
+
     p1_subtree_ind, p1_subtree_nodes = P1.subtree(at_node)
     p2_subtree_ind, p2_subtree_nodes = P2.subtree(at_node)
 
+    # TODO add conditionals for growing array in case there is an indexing issue.
     Len = max(P1.heap.size, P2.heap.size)
     C1 = P1.copy(Len)
     C2 = P2.copy(Len)
-    # TODO add conditionals for growing array in case there is an indexing issue.
-    C1.heap[p1_subtree_ind] = p2_subtree_nodes
-    C2.heap[p2_subtree_ind] = p1_subtree_nodes
+
+    C1.heap[p2_subtree_ind] = p2_subtree_nodes
+    C2.heap[p1_subtree_ind] = p1_subtree_nodes
 
     return C1, C2
 
@@ -663,44 +690,88 @@ def Population_Crossover(Population, target_data):
     p_size = len(Population)
     new_pop = np.full(p_size, None, dtype=object)
 
-    for i in range(0, p_size, 2):
+    for i in tqdm(range(0, p_size, 2), desc=f'Population Crossover (size = {p_size})'):
         Parent_1, Parent_2 = selection(population=Population, data=target_data)
         Child_1, Child_2 = Crossover(Parent_1, Parent_2, at_node=None)
         new_pop[i], new_pop[i+1] = Child_1, Child_2
     return new_pop
 
+# TODO TEST
+
 
 def Population_Mutation(Population,
-                        Constant_Mutation=True, change_prcnt=.02, min_mutation=.05,
+                        Constant_Mutation=True, change_prcnt=.02, min_mutation=.1,
                         Operator_Mutation=True, swap_num=1):
-    for function in Population:
+    for function in tqdm(Population, desc='Population Mutation'):
         if Constant_Mutation:
-            function.Constant_Mutation(change_prcnt=change_prcnt,
-                                       min_mutation=min_mutation)
+            function.Constant_Mutation(
+                change_prcnt=change_prcnt, min_mutation=min_mutation)
         if Operator_Mutation:
             function.Operator_Mutation(swap_num=swap_num)
 
     return Population
 
 
-def EP_Symbolic_Rgresion(target_data, pop_size=50, generations=1000):
+def EP_Symbolic_Rgresion(target_data, pop_size=10, generations=50):
     Population = initialize_popuplation(pop_size=pop_size)
-    for _ in range(generations):
-        # calls selection and crossover funcs for each pair
+    improvement_log = []
+    population_MSEs = []
+    num_evaluations = 0
+    best_heap = None
+    for i in range(generations):
+        print(f'Generation {i+1}')
+        # Crossover does both selection and crossover for a new population
         Population = Population_Crossover(Population, target_data)
         Population = Population_Mutation(Population)
 
+        fitness_arr = np.array([F.MSE(target_data) for F in Population])
+        pop_fitness_ind = np.argsort(fitness_arr)  # min is best MSE
+
+        # TODO embed this info into the selection.
+        num_evaluations += pop_size
+        evaluated_populations = fitness_arr[pop_fitness_ind]
+        best_function = Population[pop_fitness_ind[0]]
+        print(f'Best MSE this gen =', best_function.MSE(target_data))
+        improvement_log.append(
+            [num_evaluations, best_function, best_function.MSE(target_data)])
+        population_MSEs.append(evaluated_populations)
         # WHAT TO RETURN FOR PLOTTIONG:
 
-    return Population
+    Progress_array = np.array(improvement_log)
+    Column_labels = ['Evaluations', 'Best agent', 'Lowest MSE']
+    Progress_df = pd.DataFrame(Progress_array, columns=Column_labels)
+    Progress_df["Pop_MSEs"] = population_MSEs
+    last_Population = Population  # last population in order
+
+    return Progress_df, last_Population_ranked
 
 
+# %%
+pop_test = initialize_popuplation(pop_size=3)
+for f in pop_test:
+    print(f)
+pop_test = Population_Mutation(pop_test)
+for f in pop_test:
+    print(f)
+
+
+# %%
+# TEst GP:
+Progress_df, final_pop_ordered = EP_Symbolic_Rgresion(
+    Bronze_data, pop_size=200, generations=50)
+
+# %%
+Progress_df.head()
+
+best_function = Progress_df['Best agent'].iloc[-1]
+print(best_function)
+best_function.plot_approximation(target_data=Bronze_data)
 # %%
 # Testing EP
 np.random.seed(25)
 h1 = NP_Heap(Randomize=True, max_depth=4, const_prob=.3)
 h2 = NP_Heap(Randomize=True, max_depth=4, const_prob=.3)
-# print(h1)
+h2.Constant_Mutation(change_prcnt=.02, min_mutation=.05)
 # print(h2)
 # h1.print_arr()
 # h2.print_arr()
@@ -730,8 +801,15 @@ print(new_h)
 '''
 
 # %%
-c = 1569954
-print(c)
-if c % 2:
-    c += 1
-print(c)
+
+# Define the number of iterations in your loop
+total_iterations = 100
+
+# Create a loop with a progress bar
+for i in tqdm(range(total_iterations), desc="Processing"):
+    function, mse_arr = Random_Search(10,
+                                      data=Bronze_data,
+                                      max_depth=3,
+                                      C_range=Y_range_Cu)
+
+    pass
