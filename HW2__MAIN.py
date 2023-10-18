@@ -27,7 +27,8 @@ print('Bronze_data Range \t=', np.min(
     Bronze_data[:, 1]), '\t<->\t', np.max(Bronze_data[:, 1]))
 print('Silver_data Range \t=', np.min(
     Silver_data[:, 1]), '\t\t<->\t', np.max(Silver_data[:, 1]))
-print('Gold_data Range \t=', np.min(Gold_data[:, 1]), '\t<->\t', np.max(Gold_data[:, 1]))
+print('Gold_data Range \t=', np.min(
+    Gold_data[:, 1]), '\t<->\t', np.max(Gold_data[:, 1]))
 print('Platinum_data Range \t=', np.min(
     Platinum_data[:, 1]), '\t<->\t', np.max(Platinum_data[:, 1]))
 
@@ -36,7 +37,7 @@ Y_range_Ag = (np.min(Silver_data[:, 1]), np.max(Silver_data[:, 1]))
 Y_range_Au = (np.min(Gold_data[:, 1]), np.max(Gold_data[:, 1]))
 Y_range_Pt = (np.min(Platinum_data[:, 1]), np.max(Platinum_data[:, 1]))
 
-#print(len(Gold_data))
+# print(len(Gold_data))
 # %% -------------------------------------------------
 
 
@@ -791,7 +792,7 @@ class Symbolic_Regession_EP(object):
                     # TODO only call this with temperature updates.
                     self.Update_pop_fitness()
                     print(f'logging at {count}')
-                    count = self.evaluations // Update_freq
+                    count = self.evaluations // Update_freq + 1
 
                     # log stuff and update globals (this can be done in crossover if ind - 0)
                     self.best_function = self.population[self.fitness_ind[0]]
@@ -829,34 +830,3 @@ print(P1, p2)
 print(test)
 
 results_df = test.run(Update_freq=250)
-
-# %%
-
-
-class MyData:
-    def __init__(self, array1, array2, array3):
-        self.array1 = array1
-        self.array2 = array2
-        self.array3 = array3
-
-    def __str__(self):
-        def format_array(arr, name):
-            return f"{name}:\n{arr[:5]} ... {arr[-5:]}\n"
-
-        output = ""
-        output += format_array(self.array1, "Array 1")
-        output += format_array(self.array2, "Array 2")
-        output += format_array(self.array3, "Array 3")
-        return output
-
-
-# Create sample arrays
-array1 = np.arange(1, 101)
-array2 = np.arange(101, 201)
-array3 = np.arange(201, 301)
-
-# Create an instance of MyData
-data = MyData(array1, array2, array3)
-
-# Print the data
-print(data)
