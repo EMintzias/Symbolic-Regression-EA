@@ -41,15 +41,14 @@ print(len(Gold_data))
 
 
 class Function_node(object):
-    # Globals to be inherited
+    # Global parameters tha bound acceptable operators
     # last is the header indicator (indexing from 1!)
     node_types = ('+', '-', '*', '/', '^', 'sin', 'cos',
                   'const', 'X', 'ERR')
     dual_operators = ('+', '-', '*', '/', '^')
     single_operators = ('sin', 'cos')
 
-    # TODO
-
+    # Constructor for a function node
     def __init__(self, function_name, value=None):
         self.num_childs = 0
         self.value = value
@@ -67,14 +66,6 @@ class Function_node(object):
 
         # set number of children gien type
 
-        '''
-        if self.function_name == 'const':
-            if value == None:
-                self.value = 0  # TODO: np.random.uniform(yrange)
-            else:
-                self.value = value
-        '''
-
         if self.function_name in self.dual_operators:
             self.req_num_childs = 2
         elif self.function_name in self.single_operators:
@@ -82,7 +73,7 @@ class Function_node(object):
         else:
             self.req_num_childs = 0
 
-    # METHODS:
+    # Node methods to integrate into our tree:
     def add_child_count(self):
         self.num_childs += 1
 
@@ -96,6 +87,7 @@ class Function_node(object):
         new_node.num_childs = self.num_childs
         return new_node
 
+    # printing a node:
     def __str__(self):  # print statement
         if self.function_name == 'const':
             return f"{round(self.value,2)}"
@@ -121,27 +113,15 @@ class NP_Heap(Function_node):
         self.trig_operators = ('sin', 'cos')
         self.non_operator = ('X', 'const')
 
-        # Creating ARR from given heap list
-        '''
-        if type(Heap) == None: 
-            
-        else: 
-            self.heap = np.full(len(Heap), None, dtype=object)
-            for i,val in enumerate(Heap): #heap is a list of values indexed at 0
-                self.heap[i+1] = val 
-        '''
-
         if Randomize:
             self.Random_Heap(max_depth=max_depth,
                              const_prob=const_prob,
                              C_range=C_range)
 
-    def __str__(self):
-        return self.print_heap_tree()
-
  ############# Heap Manipulation #############
 
     # INDEXING AT 1:
+
     def get_parent_idx(self, child_idx):
         return int(child_idx/2)
 
@@ -195,12 +175,7 @@ class NP_Heap(Function_node):
                 h.heap[i] = node.copy_node()
         return h
 
-    # Why not just do this?
-    # def has_root(self):
-    #   return self.heap[0] != None
-
  # INSERT FUNCTION
-
     def insert(self, parent_indx, node_obj, position=None):
         # check for size availibility or resize
 
@@ -235,6 +210,9 @@ class NP_Heap(Function_node):
  # ---------------------------------------------
 
  ####### DISPLAY FUNCTIONS ##########
+    def __str__(self):
+        return self.print_heap_tree()
+
     def print_heap_tree(self, index=1, prefix="", is_left=True):  # CALLED BY __str__ method
         output = ""
         if index < len(self.heap) and self.heap[index] is not None:
@@ -256,13 +234,6 @@ class NP_Heap(Function_node):
         ind_arr = np.arange(self.heap.size)
         max_def = max(ind_arr[self.heap != None])+1
         print(np.stack((ind_arr[1:max_def], heap_str[1:max_def])))
-        return None
-
-    def show_function(self):  # TODO
-        # evaluates a node given its index
-        heap_str = [str(node) for node in self.heap]
-        depth = None  # some function of length (1/2)
-        function_str = None
         return None
 
     def plot_approximation(self, X_range=(0, 10), target_data=None, y_pred=None, ):
@@ -473,7 +444,7 @@ class NP_Heap(Function_node):
 
     def fitness(self, target_data, T=.05):
         MSE = self.MSE(target_data)
-        return np.exp(-T*MSE) + 1e-6
+        return np.exp(-T*MSE) + 1e-6, MSE
 
  # #### EP Functions ########## :
     '''
@@ -540,11 +511,7 @@ class NP_Heap(Function_node):
                 subtree_ind.append(j)
 
         return subtree_ind, self.heap[subtree_ind]
-# %%
-# Testing new heap functionality
-
-
-# %% RANDOM SEARCH
+# %%  ############### RANDOM SEARCH ###########################
 ###### RANDOM & HC ###############
 
 
@@ -642,11 +609,10 @@ def RSHC(Starts, target_data, step_search_size=128, max_depth=3, mutate_prcnt_ch
             best_function = function
             Best_MSE = best_MSE_i
     return best_function, improvement_log
+
+
 # %%
-
 #  RUN RANDOM SEARCH
-
-
 start = time.time()
 function, mse_arr = Random_Search(500,
                                   data=Bronze_data,
@@ -654,8 +620,6 @@ function, mse_arr = Random_Search(500,
                                   C_range=Y_range_Cu)
 runtime = time.time() - start
 function.plot_approximation(target_data=Bronze_data)
-
-
 # %% RUN RSHC
 best_function, performance_log = RSHC(Starts=10,
                                       step_search_size=25,
@@ -666,25 +630,33 @@ best_function, performance_log = RSHC(Starts=10,
                                       Optimized_random=100)
 print(best_function, '\n MSE= ', best_function.MSE(Bronze_data))
 best_function.plot_approximation(target_data=Bronze_data)
-
-
 # %%
 # PRINT RSHC RESULTS
 print(best_function, '\n MSE= ', best_function.MSE(Bronze_data))
 best_function.plot_approximation(target_data=Bronze_data)
 
-# %%
+# %%############################################################
 ## **** EVOLUTIONARY ALGOS ***** ##
 # TODO test turnament selection
 # TODO robust crossover (not stress tested)
 # TODO implement better mutation (currently just constants by +_2% (very slow))
 
 
-class Symbolic_Regession_EA(object):
+class Symbolic_Regession_EP(object):
 
     def __init__(self, pop_size, target_data, tree_depth=4, const_prob=.35, init_Constant_Range=(-10, 10)):
+
+        self.target_data = target_data
+        self.T = .05
+        self.evaluations = 0
+
+        self.min_mutation = .1  # mutation hyper parameter
+        self.change_prcnt = .05
+        self.improvement_log = []
+        self.ith_population_fitness = []
+
         if pop_size % 2:
-            pop_size += 1  # ensure population num is even
+            pop_size += 1  # ensure population num is even (now irrelevant)
         new_population = np.full(pop_size, None)
         for i in range(pop_size):
             new_population[i] = NP_Heap(Randomize=True,
@@ -692,19 +664,29 @@ class Symbolic_Regession_EA(object):
                                         const_prob=const_prob,
                                         C_range=init_Constant_Range)
         self.population = new_population
-        self.target_data = target_data
-        self.T = .05
-        self.Update_pop_fitness(T=self.T)  # initialize fitness
-        self.evaluations = 0
+        self.Update_pop_fitness()  # initialize fitness
 
-    def Update_pop_fitness(self, T=.05):
+    def __str__(self):
+        def format_array(arr, name):
+            return f"{name}:{np.round(arr[:5],decimals=2)}...{np.round(arr[-5:],decimals=2)}\n"
+
+        output = ""
+        output += format_array(self.MSE_array, "MSE Array")
+        output += format_array(self.fitness_arr, "Fitness Array")
+        output += format_array(self.fitness_ind, "Best Ind_arr")
+        best_ind = self.fitness_ind[0]
+        output += f'\n Best MSE = {round(self.MSE_array[best_ind],3)}, Fitness = {round(self.fitness_arr[best_ind],3)}'
+        return output
+
+    def Update_pop_fitness(self):
         # T is a measure of selection pressure. The higher T the higher the parents are ranked!
-        MSE_array = np.array([F.MSE(self.target_data)
-                             for F in self.population])
+        self.MSE_array = np.array([F.MSE(self.target_data)
+                                   for F in self.population])
         # addind this constant cus they all suck at the beginning lol
-        self.fitness_arr = np.exp(-self.T*MSE_array) + 1e-6
+        self.fitness_arr = np.exp(-self.T*self.MSE_array) + 1e-3
         self.fitness_ind = np.argsort(self.fitness_arr)[::-1]
-        self.evaluations += MSE_array.size
+        self.best_fitness = self.fitness_arr[self.fitness_ind[0]]
+        self.evaluations += self.population.size
         # return fitness_arr, MSE_array  # Return MSE for printing
         return None
 
@@ -759,19 +741,21 @@ class Symbolic_Regession_EA(object):
         self.Mutate(C1, C2)
 
         # calculate their fitness (need to test this)
-        C1_fitness = C1.fitness(self.target_data, self.T)
-        C2_fitness = C2.fitness(self.target_data, self.T)
+        C1_fitness, C1_MSE = C1.fitness(self.target_data, self.T)
+        C2_fitness, C2_MSE = C2.fitness(self.target_data, self.T)
         self.evaluations += 2
 
         # Select the best two between parent and new children
+        # TODO Implement discrete diversity maintenance here
         candidates = np.array([P1, P2, C1, C2])
-        C_fitness = np.array([self.fitness[P1_ind],
-                              self.fitness[P2_ind],
+        C_fitness = np.array([self.fitness_arr[P1_ind],
+                              self.fitness_arr[P2_ind],
                               C1_fitness,
                               C2_fitness])
         best = np.argsort(C_fitness)[::-1]
 
         # overwrite the two parent indecies with the best population and their fitnesses
+        # TODO also overwrite MSE and have it returned when you calc fitness
         self.population[P1_ind] = candidates[best[0]]
         self.fitness_arr[P1_ind] = C_fitness[best[0]]
         self.population[P2_ind] = candidates[best[1]]
@@ -779,129 +763,100 @@ class Symbolic_Regession_EA(object):
 
         return None
 
-    def Mutate(self, C1, C2,
-               change_prcnt=.02, min_mutation=.1):
-        C1.Constant_Mutation(change_prcnt=change_prcnt,
-                             min_mutation=min_mutation)
-        C2.Constant_Mutation(change_prcnt=change_prcnt,
-                             min_mutation=min_mutation)
+    def Mutate(self, C1, C2,):
+        C1.Constant_Mutation(change_prcnt=self.change_prcnt,
+                             min_mutation=self.min_mutation)
+        C2.Constant_Mutation(change_prcnt=self.change_prcnt,
+                             min_mutation=self.min_mutation)
 
-    def run(self, **kwargs):
-        best_MSE = 1e9
-        T = .05
-        best_function = None
-        improvement_log = []
-        population_MSEs = []
-        num_evaluations = 0
+    def run(self, max_evaluations=1e4, Update_freq=250, min_fitness=.75, **kwargs):
 
-        while best_MSE > 1:
-            # TODO update fitness based on some T criteria
-            self.Update_pop_fitness()
+        # technically cheating: we call in init. self.evaluations = 0
 
-            P1_ind, P2_ind = self.fitness_prop_Slection()
+        count = 0
+        with tqdm(total=max_evaluations, unit="evaluation") as pbar:
+            past_evals = 0
 
-            self.Crossover_and_Mutate(P1_ind, P2_ind)
+            while self.best_fitness < min_fitness and not self.evaluations > max_evaluations:
+                # TODO update fitness based on some T criteria
+                P1_ind, P2_ind = self.fitness_prop_Slection()
+                self.Crossover_and_Mutate(P1_ind, P2_ind)
 
-            # TODO Update temperature
+                # the above replaces in population and writes to the fitness array so we have to resort
+                self.fitness_ind = np.argsort(self.fitness_arr)[::-1]
+                self.best_fitness = self.fitness_arr[self.fitness_ind[0]]
 
-        return best
+                # logging frequency
+                if self.evaluations // Update_freq >= count:
+                    # TODO only call this with temperature updates.
+                    self.Update_pop_fitness()
+                    print(f'logging at {count}')
+                    count = self.evaluations // Update_freq
+
+                    # log stuff and update globals (this can be done in crossover if ind - 0)
+                    self.best_function = self.population[self.fitness_ind[0]]
+                    #self.best_MSE = self.fitness_arr[self.fitness_ind[0]]
+                    self.improvement_log.append([self.evaluations,
+                                                self.best_function,
+                                                self.best_fitness])
+
+                    self.ith_population_fitness.append(self.fitness_arr)
+
+                # improvement bar (comment out & delete the tqdm block for speed / parallel if needed)
+                # TODO MSE array stuff
+                pbar.update(self.evaluations - past_evals)
+                pbar.set_description(f'Best Fitness: {self.best_fitness:.2f}')
+                past_evals = self.evaluations
+        print(f'exited at {count} with Fitness = {self.best_fitness:.5f} ')
+        return None
+        '''
+        Progress_array = np.array(self.improvement_log)
+        Column_labels = ['Evaluations', 'Best agent', 'Lowest MSE']
+        Progress_df = pd.DataFrame(Progress_array, columns=Column_labels)
+        Progress_df["Pop_Fitnesses"] = self.ith_population_fitness
+        return Progress_df
+        '''
 
 
 # %%
-test = Symbolic_Regession_EA(10, target_data=Bronze_data)
+# testing  EP in this cell
+#execution_time = timeit.timeit(lambda: Symbolic_Regession_EP(250, target_data=Bronze_data), number=1)
 
-P1, p2 = test.fitness_prop_Slection(T=.05)
+test = Symbolic_Regession_EP(250, target_data=Bronze_data)
+
+P1, p2 = test.fitness_prop_Slection()
 print(P1, p2)
-# %%
-# TEst GP:
+print(test)
 
-Progress_df, final_pop_ordered = EP_Symbolic_Rgresion(
-    Bronze_data, pop_size=200, generations=50)
-
-# %%
-Progress_df.head()
-
-build_function = Progress_df['Best agent'].tail(5)
-
-for f in build_function:
-    print(f)
-# best_function.plot_approximation(target_data=Bronze_data)
-
-# %%
-
-a = np.array([])
-print(type(a))
-# %%
-
-# Create a random array of 1000 numbers
-arr = np.random.rand(1000)
-
-# Measure the time it takes to perform argsort
-time_taken = timeit.timeit(lambda: np.argsort(arr), number=1500)
-time_taken2 = timeit.timeit(lambda: np.sum(arr), number=1500)
-
-print(f"Time taken for argsort: {time_taken} seconds")
-print(f"Time taken for sum: {time_taken2} seconds")
+results_df = test.run(Update_freq=250)
 
 # %%
 
 
-def Population_Crossover(Population, target_data):
-    p_size = len(Population)
-    new_pop = np.full(p_size, None, dtype=object)
+class MyData:
+    def __init__(self, array1, array2, array3):
+        self.array1 = array1
+        self.array2 = array2
+        self.array3 = array3
 
-    for i in tqdm(range(0, p_size, 2), desc=f'Population Crossover (size = {p_size})'):
-        Parent_1, Parent_2 = selection(population=Population, data=target_data)
-        Child_1, Child_2 = Crossover(Parent_1, Parent_2, at_node=None)
-        new_pop[i], new_pop[i+1] = Child_1, Child_2
-    return new_pop
+    def __str__(self):
+        def format_array(arr, name):
+            return f"{name}:\n{arr[:5]} ... {arr[-5:]}\n"
 
-
-# TODO TEST
-
-# TODO
-def Population_Mutation(Population,
-                        Constant_Mutation=True, change_prcnt=.02, min_mutation=.1,
-                        Operator_Mutation=True, swap_num=1):
-    for function in tqdm(Population, desc='Population Mutation'):
-        if Constant_Mutation:
-            function.Constant_Mutation(
-                change_prcnt=change_prcnt, min_mutation=min_mutation)
-        if Operator_Mutation:
-            function.Operator_Mutation(swap_num=swap_num)
-
-    return Population
+        output = ""
+        output += format_array(self.array1, "Array 1")
+        output += format_array(self.array2, "Array 2")
+        output += format_array(self.array3, "Array 3")
+        return output
 
 
-def EP_Symbolic_Rgresion_loop(target_data, pop_size=10, generations=50):
-    Population = initialize_popuplation(pop_size=pop_size)
-    improvement_log = []
-    population_MSEs = []
-    num_evaluations = 0
-    best_heap = None
-    for i in range(generations):
-        print(f'Generation {i+1}')
-        # Crossover does both selection and crossover for a new population
-        Population = Population_Crossover(Population, target_data)
-        Population = Population_Mutation(Population)
+# Create sample arrays
+array1 = np.arange(1, 101)
+array2 = np.arange(101, 201)
+array3 = np.arange(201, 301)
 
-        fitness_arr = np.array([F.MSE(target_data) for F in Population])
-        pop_fitness_ind = np.argsort(fitness_arr)  # min is best MSE
+# Create an instance of MyData
+data = MyData(array1, array2, array3)
 
-        # TODO embed this info into the selection.
-        num_evaluations += pop_size
-        evaluated_populations = fitness_arr[pop_fitness_ind]
-        best_function = Population[pop_fitness_ind[0]]
-        print(f'Best MSE this gen =', best_function.MSE(target_data))
-        improvement_log.append(
-            [num_evaluations, best_function, best_function.MSE(target_data)])
-        population_MSEs.append(evaluated_populations)
-        # WHAT TO RETURN FOR PLOTTIONG:
-
-    Progress_array = np.array(improvement_log)
-    Column_labels = ['Evaluations', 'Best agent', 'Lowest MSE']
-    Progress_df = pd.DataFrame(Progress_array, columns=Column_labels)
-    Progress_df["Pop_MSEs"] = population_MSEs
-    last_Population = Population  # last population in order
-
-    return Progress_df, last_Population_ranked
+# Print the data
+print(data)
