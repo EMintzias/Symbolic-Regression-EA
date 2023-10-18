@@ -24,19 +24,19 @@ Gold_data = np.loadtxt("Gold.txt", dtype=float, delimiter=',')
 Platinum_data = np.loadtxt("Platinum.txt", dtype=float, delimiter=',')
 
 print('Bronze_data Range \t=', np.min(
-    Bronze_data[:, 1]), '<->', np.max(Bronze_data[:, 1]))
+    Bronze_data[:, 1]), '\t<->\t', np.max(Bronze_data[:, 1]))
 print('Silver_data Range \t=', np.min(
-    Silver_data[:, 1]), '<->', np.max(Silver_data[:, 1]))
-print('Gold_data Range \t=', np.min(Gold_data[:, 1]), np.max(Gold_data[:, 1]))
+    Silver_data[:, 1]), '\t\t<->\t', np.max(Silver_data[:, 1]))
+print('Gold_data Range \t=', np.min(Gold_data[:, 1]), '\t<->\t', np.max(Gold_data[:, 1]))
 print('Platinum_data Range \t=', np.min(
-    Platinum_data[:, 1]), '<->', np.max(Platinum_data[:, 1]))
+    Platinum_data[:, 1]), '\t<->\t', np.max(Platinum_data[:, 1]))
 
 Y_range_Cu = (np.min(Bronze_data[:, 1]), np.max(Bronze_data[:, 1]))
 Y_range_Ag = (np.min(Silver_data[:, 1]), np.max(Silver_data[:, 1]))
 Y_range_Au = (np.min(Gold_data[:, 1]), np.max(Gold_data[:, 1]))
 Y_range_Pt = (np.min(Platinum_data[:, 1]), np.max(Platinum_data[:, 1]))
 
-print(len(Gold_data))
+#print(len(Gold_data))
 # %% -------------------------------------------------
 
 
