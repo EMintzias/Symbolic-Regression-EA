@@ -116,7 +116,7 @@ class NP_Heap(Function_node):
     def __init__(self, length=2, Heap=None, Randomize=False, max_depth=4, const_prob=.45, C_range=(-10, 10)):
         self.heap = np.full(length, None, dtype=object)
         # ALL Operators ('+', '-', '*', '/', '^', 'sin', 'cos')
-        self.operators = ('*', '+', '-')
+        self.operators = ('*', '+', '-', '/', 'sin', 'cos')
         self.trig_operators = ('sin', 'cos')
         self.non_operator = ('X', 'const')
 
@@ -243,16 +243,21 @@ class NP_Heap(Function_node):
         print(np.stack((ind_arr[1:max_def], heap_str[1:max_def])))
         return None
 
-    def plot_approximation(self, X_range=(0, 10), target_data=None, y_pred=None, ):
+    def plot_approximation(self, X_range=(0, 10), target_data=None, y_pred=None,
+                           data_name='Data'):
         X_arr = np.linspace(X_range[0], X_range[1], 1000)
 
         if type(target_data) != None:
-            plt.plot(target_data[:, 0], target_data[:, 1])
+            plt.plot(target_data[:, 0], target_data[:, 1], label='Given_data')
 
         if not y_pred:
             y_pred = [self.evaluate(X=x) for x in X_arr]
 
-        plt.plot(X_arr, y_pred, 'b')
+        plt.plot(X_arr, y_pred, label='GA Solution')
+        plt.legend()
+        plt.xlabel('X-axis')
+        plt.ylabel('Y-axis')
+        plt.title(data_name + ' approximation ')
         plt.show()
         return None
 
@@ -314,8 +319,11 @@ class NP_Heap(Function_node):
             # criteria for a constant child
             if self.depth() >= max_depth - 1 or np.random.rand() < const_prob:  # no operators terminate with constants
 
+                if self.heap[Index].function_name in self.trig_operators:
+                    node_name = 'X'
+                    node_val = None
                 # check left child has been populated to ensure they are not both same (irrelevant node)
-                if self.heap[Index].num_childs == 1:
+                elif self.heap[Index].num_childs == 1:
                     L_name = self.heap[2 * Index].function_name
                     # if this is the second constant make it opposit
                     if L_name in ['X', 'const']:
@@ -354,7 +362,7 @@ class NP_Heap(Function_node):
                              const_prob=const_prob, C_range=C_range)
 
     # ****  EVALUATE A NODE ***:
-    def evaluate(self, node_ind=1, X=None):  # tree root = 1
+    def evaluate(self, node_ind=1, X=1):  # tree root = 1
         # evaluates a node given its index
 
         def node_operation(operator, operand):
@@ -392,10 +400,8 @@ class NP_Heap(Function_node):
 
         elif L_child.function_name == 'X':
             L_child.value = X
-
-        if type(R_child) is None:
+        if R_child == None:
             pass
-
         elif R_child.function_name in self.operators:
             R_child.value = self.evaluate(node_ind=2*node_ind+1, X=X)
 
@@ -412,7 +418,7 @@ class NP_Heap(Function_node):
             # i.e its sin, cos, tan etc (as defined above
             elif node_operator in self.trig_operators:
 
-                if None not in children_types:
+                if None not in (L_child, R_child):
                     raise ValueError(
                         f"Invalid children type for operator: {node_operator} \n\t L/R children are: {(L_child, R_child)}")
                 elif type(L_child):  # if None use the right child value
@@ -427,13 +433,15 @@ class NP_Heap(Function_node):
             sys.exit()
 
         # DIAGNOSTIC
+        '''
         msg_out = (
             f"at the root evaluating with:\n\t - parent node index {node_ind}"
             f"\n\t - operator {node_operator}"
             f"\n\t - with children {[str(x) for x in self.heap[[L_indx, R_indx]]]}"
             f"\n result passed {node_val}"
         )
-        # print(msg_out)
+        #print(msg_out)
+        '''
         return node_val
     # **** END NODE EVAL   ***
 
@@ -785,7 +793,7 @@ class Symbolic_Regession_EP(object):
 
         # technically cheating: we call in init. self.evaluations = 0
 
-        count = 0
+        count, log_insance = 0, 0
         with tqdm(total=max_evaluations, unit="evaluation") as pbar:
             past_evals = 0
 
@@ -800,7 +808,7 @@ class Symbolic_Regession_EP(object):
                 if self.evaluations // Update_freq >= count:
                     # TODO only call this with temperature updates.
                     # self.Update_pop_fitness()
-                    print(f'logging insace: {count}')
+                    print(f'logging chck in # {log_insance+=1}')
                     count = self.evaluations // Update_freq + 1
                     self.eval_log.append(self.evaluations)
                     self.ith_population_fitnesses.append(self.fitness_arr)
@@ -809,7 +817,7 @@ class Symbolic_Regession_EP(object):
                 # improvement bar (comment out & delete the tqdm block for speed / parallel if needed)
                 # TODO MSE array stuff
                 pbar.update(self.evaluations - past_evals)
-                pbar.set_description(f'Best Fitness: {self.best_fitness:.2f}')
+                pbar.set_description(f'Best Fitness: {self.best_fitness:.4f}')
                 past_evals = self.evaluations
 
         return None
@@ -818,26 +826,27 @@ class Symbolic_Regession_EP(object):
 # %%
 # testing  EP in this cell
 #execution_time = timeit.timeit(lambda: Symbolic_Regession_EP(250, target_data=Bronze_data), number=1)
-data = Bronze_data
-Bronze_population = Symbolic_Regession_EP(1000, target_data=data)
-Bronze_population.run()
+data = Silver_data
+Bronze_population = Symbolic_Regession_EP(2000, target_data=data)
+Bronze_population.run(min_fitness=.98)
 
 best_ind = Bronze_population.fitness_ind[0]
 best_func = Bronze_population.population[best_ind]
 
 rslt_msg = ''
 rslt_msg += f' Best function ' + best_func.build_function()
-rslt_msg += f'  - FITNESS = {best_func.fitness(data)}'
+rslt_msg += f'  - FITNESS/MSE = {best_func.fitness(data)}'
 
 print(rslt_msg)
 
+best_func.plot_approximation(target_data=data, data_name='Silver_data')
+# %%
 best_func.plot_approximation(target_data=data)
-# %%
-
 
 # %%
+np.random.seed(7)
 data = Silver_data
-sin_test = Symbolic_Regession_EP(5, target_data=data)
+sin_test = Symbolic_Regession_EP(2, target_data=data)
 
 for f in sin_test.population:
 
@@ -845,6 +854,6 @@ for f in sin_test.population:
     print(f.MSE(data))
 
 # %%
-best = sin_test.population[2]
-print(best)
-best.plot_approximation(target_data=data)
+t = NP_Heap(Randomize=True)
+print(t)
+t.plot_approximation(target_data=data, data_name='puto')
