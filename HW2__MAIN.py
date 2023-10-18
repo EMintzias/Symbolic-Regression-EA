@@ -37,6 +37,15 @@ Y_range_Ag = (np.min(Silver_data[:, 1]), np.max(Silver_data[:, 1]))
 Y_range_Au = (np.min(Gold_data[:, 1]), np.max(Gold_data[:, 1]))
 Y_range_Pt = (np.min(Platinum_data[:, 1]), np.max(Platinum_data[:, 1]))
 
+data = Silver_data
+plt.plot(data[:, 0], data[:, 1], label='Given Data')
+x = np.linspace(0, 10, 1000)
+y = .1 * np.power(x, 2) + .5*x*np.cos(x)
+plt.plot(x, y, label='My shitty approximation')
+plt.legend()
+plt.xlabel('X-axis')
+plt.ylabel('Y-axis')
+plt.title('Data approximation sandbox')
 # print(len(Gold_data))
 # %% -------------------------------------------------
 
@@ -93,10 +102,7 @@ class Function_node(object):
         if self.function_name == 'const':
             return f"{round(self.value,2)}"
         elif self.function_name == 'X':
-            if self.value:
-                return f"X={self.value}"
-            else:
-                return "X"
+            return "X"
         else:
             return f"{self.function_name}"
 
@@ -268,8 +274,8 @@ class NP_Heap(Function_node):
         right_child_index = 2 * index + 1
 
         # Recursively build the left and right subtrees
-        left_subtree = build_function(heap_array, left_child_index)
-        right_subtree = build_function(heap_array, right_child_index)
+        left_subtree = self.build_function(index=left_child_index)
+        right_subtree = self.build_function(index=right_child_index)
 
         # Check if parentheses are needed around children
         if left_subtree and current_node in higher_precedence:
@@ -343,7 +349,7 @@ class NP_Heap(Function_node):
         if L_child.function_name in self.operators:
             self.Random_Heap(Index=2*Index, max_depth=max_depth,
                              const_prob=const_prob, C_range=C_range)
-        if R_child.function_name in self.operators:
+        if type(R_child) == Function_node and R_child.function_name in self.operators:
             self.Random_Heap(2*Index+1, max_depth=max_depth,
                              const_prob=const_prob, C_range=C_range)
 
@@ -615,12 +621,13 @@ def RSHC(Starts, target_data, step_search_size=128, max_depth=3, mutate_prcnt_ch
 # %%
 #  RUN RANDOM SEARCH
 start = time.time()
-function, mse_arr = Random_Search(500,
+function, mse_arr = Random_Search(1000,
                                   data=Bronze_data,
                                   max_depth=3,
                                   C_range=Y_range_Cu)
 runtime = time.time() - start
 function.plot_approximation(target_data=Bronze_data)
+print(runtime)
 # %% RUN RSHC
 best_function, performance_log = RSHC(Starts=10,
                                       step_search_size=25,
@@ -650,11 +657,12 @@ class Symbolic_Regession_EP(object):
         self.target_data = target_data
         self.T = .05
         self.evaluations = 0
-
         self.min_mutation = .1  # mutation hyper parameter
         self.change_prcnt = .05
-        self.improvement_log = []
-        self.ith_population_fitness = []
+
+        self.eval_log = []
+        self.ith_population_fitnesses = []
+        self.ith_best_function = []
 
         if pop_size % 2:
             pop_size += 1  # ensure population num is even (now irrelevant)
@@ -762,6 +770,9 @@ class Symbolic_Regession_EP(object):
         self.population[P2_ind] = candidates[best[1]]
         self.fitness_arr[P2_ind] = C_fitness[best[1]]
 
+        self.fitness_ind = np.argsort(self.fitness_arr)[::-1]
+        self.best_fitness = self.fitness_arr[self.fitness_ind[0]]
+
         return None
 
     def Mutate(self, C1, C2,):
@@ -783,50 +794,57 @@ class Symbolic_Regession_EP(object):
                 P1_ind, P2_ind = self.fitness_prop_Slection()
                 self.Crossover_and_Mutate(P1_ind, P2_ind)
 
-                # the above replaces in population and writes to the fitness array so we have to resort
-                self.fitness_ind = np.argsort(self.fitness_arr)[::-1]
-                self.best_fitness = self.fitness_arr[self.fitness_ind[0]]
+                # the above replaces in population and writes to the fitness array so we have to resor
 
-                # logging frequency
+                # if logging frequency
                 if self.evaluations // Update_freq >= count:
                     # TODO only call this with temperature updates.
-                    self.Update_pop_fitness()
-                    print(f'logging at {count}')
+                    # self.Update_pop_fitness()
+                    print(f'logging insace: {count}')
                     count = self.evaluations // Update_freq + 1
-
-                    # log stuff and update globals (this can be done in crossover if ind - 0)
-                    self.best_function = self.population[self.fitness_ind[0]]
-                    #self.best_MSE = self.fitness_arr[self.fitness_ind[0]]
-                    self.improvement_log.append([self.evaluations,
-                                                self.best_function,
-                                                self.best_fitness])
-
-                    self.ith_population_fitness.append(self.fitness_arr)
+                    self.eval_log.append(self.evaluations)
+                    self.ith_population_fitnesses.append(self.fitness_arr)
+                    self.ith_best_function.append(self.best_fitness)
 
                 # improvement bar (comment out & delete the tqdm block for speed / parallel if needed)
                 # TODO MSE array stuff
                 pbar.update(self.evaluations - past_evals)
                 pbar.set_description(f'Best Fitness: {self.best_fitness:.2f}')
                 past_evals = self.evaluations
-        print(f'exited at {count} with Fitness = {self.best_fitness:.5f} ')
+
         return None
-        '''
-        Progress_array = np.array(self.improvement_log)
-        Column_labels = ['Evaluations', 'Best agent', 'Lowest MSE']
-        Progress_df = pd.DataFrame(Progress_array, columns=Column_labels)
-        Progress_df["Pop_Fitnesses"] = self.ith_population_fitness
-        return Progress_df
-        '''
 
 
 # %%
 # testing  EP in this cell
 #execution_time = timeit.timeit(lambda: Symbolic_Regession_EP(250, target_data=Bronze_data), number=1)
+data = Bronze_data
+Bronze_population = Symbolic_Regession_EP(1000, target_data=data)
+Bronze_population.run()
 
-test = Symbolic_Regession_EP(250, target_data=Bronze_data)
+best_ind = Bronze_population.fitness_ind[0]
+best_func = Bronze_population.population[best_ind]
 
-P1, p2 = test.fitness_prop_Slection()
-print(P1, p2)
-print(test)
+rslt_msg = ''
+rslt_msg += f' Best function ' + best_func.build_function()
+rslt_msg += f'  - FITNESS = {best_func.fitness(data)}'
 
-results_df = test.run(Update_freq=250)
+print(rslt_msg)
+
+best_func.plot_approximation(target_data=data)
+# %%
+
+
+# %%
+data = Silver_data
+sin_test = Symbolic_Regession_EP(5, target_data=data)
+
+for f in sin_test.population:
+
+    print(f)
+    print(f.MSE(data))
+
+# %%
+best = sin_test.population[2]
+print(best)
+best.plot_approximation(target_data=data)
