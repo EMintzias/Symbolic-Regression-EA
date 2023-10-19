@@ -1,5 +1,6 @@
 # HW_2 Sandbox
-# %% FUNCTIONS
+# %% 
+# IMPORT FUNCTIONS
 import timeit
 from tqdm import tqdm
 import numpy as np
@@ -15,6 +16,9 @@ import pandas as pd
 import random
 import time
 import threading
+import datetime
+import pickle
+import os
 
 # %% --------------------------------------------------
 # LOAD DATA:
@@ -661,10 +665,12 @@ best_function.plot_approximation(target_data=Bronze_data)
 
 class Symbolic_Regession_EP(object):
 
-    def __init__(self, pop_size, target_data, tree_depth=4, const_prob=.35, init_Constant_Range=(-10, 10)):
+    def __init__(self, pop_size, target_data, tree_depth=4, 
+                 const_prob=.35, init_Constant_Range=(-10, 10),
+                 T= .05):
 
         self.target_data = target_data
-        self.T = .05
+        self.T = T
         self.evaluations = 0
         self.min_mutation = .1  # mutation hyper parameter
         self.change_prcnt = .05
@@ -768,6 +774,7 @@ class Symbolic_Regession_EP(object):
         C2.get_fitness(self.target_data, self.T)
         self.evaluations += 2
 
+        '''
         # DETERMINISTIC CROWDING:
         # note we now store y predictions in the function obj to avoid re-evaluation, just np operations!
         D_P1C1 = self.get_distance(P1, C1)
@@ -804,7 +811,7 @@ class Symbolic_Regession_EP(object):
         self.population[P2_ind] = candidates[best[1]]
         self.fitness_arr[P2_ind] = C_fitness[best[1]]
 
-        '''
+
 
         self.fitness_ind = np.argsort(self.fitness_arr)[::-1]
         self.best_fitness = self.fitness_arr[self.fitness_ind[0]]
@@ -820,27 +827,36 @@ class Symbolic_Regession_EP(object):
     def get_distance(self, F1, F2):
         return np.sum(np.square(F1.y_pred - F2.y_pred))/F2.y_pred.size
 
-    def run(self, max_evaluations=1e4, Update_freq=250, min_fitness=.75, Plotting=False):
-
+    def run(self, max_evaluations=1e4, Update_freq=250, min_fitness=.75, 
+            min_MSE = .5, Plotting=False):
+        
         # technically cheating: we call in init. self.evaluations = 0
-
+        Best_MSE = self.population[self.fitness_ind[0]].MSE
         count, log_insance = 0, 0
         with tqdm(total=max_evaluations, unit="evaluation") as pbar:
             past_evals = 0
 
-            while self.best_fitness < min_fitness and not self.evaluations > max_evaluations:
+            while Best_MSE > min_MSE and not self.evaluations > max_evaluations:
                 # TODO update fitness based on some T criteria
                 P1_ind, P2_ind = self.fitness_prop_Slection()
                 self.Crossover_and_Mutate(P1_ind, P2_ind)
 
                 # the above replaces in population and writes to the fitness array so we have to resor
 
+                Best_MSE = self.population[self.fitness_ind[0]].MSE
+                
+                
+                
                 # if logging frequency
                 if self.evaluations // Update_freq >= count:
                     # TODO only call this with temperature updates.
                     # self.Update_pop_fitness()
                     log_insance += 1
-                    print(f'logging chck in # {log_insance}')
+                    msg_out  = ''
+                    msg_out +=f'Logging chck in # {log_insance} Best_MSE = {Best_MSE}'
+                    msg_out +=f'Eval: {self.evaluations}/{int(max_evaluations)}'
+                    
+                    print(msg_out)
                     count = self.evaluations // Update_freq + 1
                     best_function = self.population[self.fitness_ind[0]]
 
@@ -852,35 +868,56 @@ class Symbolic_Regession_EP(object):
                         best_function.plot_approximation(target_data=data,
                                                          data_name=str(log_insance))
 
+                
+                
                 # improvement bar (comment out & delete the tqdm block for speed / parallel if needed)
                 # TODO MSE array stuff
                 pbar.update(self.evaluations - past_evals)
-                pbar.set_description(f'Best Fitness: {self.best_fitness:.5f}')
+                pbar.set_description(f'Best MSE: {Best_MSE:.3f}')
                 past_evals = self.evaluations
 
         return None
 
+def save_run(Population,data_name, folder="saved_runs",optional = ''):
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    # Calculate the fitness value
+    fitness_str = f"{Population.best_fitness:.3f}"
+    
+    # Get the current date and time
+    current_date = datetime.datetime.now()
+    date_str = current_date.strftime("%b-%d_%H-%M")  # Format the date without the year
+
+    # Define the file name
+    file_name = f"{folder}/{data_name}_fitness_{fitness_str}_date_{date_str}_{optional}.pkl"
+
+    # Serialize and save the object to the file
+    with open(file_name, 'wb') as file:
+        pickle.dump(Population, file)
 
 # %%
 # testing  EP in this cell
 #execution_time = timeit.timeit(lambda: Symbolic_Regession_EP(250, target_data=Bronze_data), number=1)
+np.random.seed(1337)
 data = Silver_data
-Bronze_population = Symbolic_Regession_EP(2500, target_data=data)
-Bronze_population.run(min_fitness=.995, Update_freq=500,
-                      max_evaluations=4e4, Plotting=False)
+Bronze_population = Symbolic_Regession_EP(1000, target_data=data,T = .05)
+Bronze_population.run(min_fitness=.895, Update_freq=500,
+                      max_evaluations=4e4, Plotting=False,
+                      )
 
 best_ind = Bronze_population.fitness_ind[0]
 best_func = Bronze_population.population[best_ind]
 
 rslt_msg = ''
-rslt_msg += f' Best function ' + best_func.build_function()
+rslt_msg += f' Best function \n' + best_func.__str__()
 rslt_msg += f'  - FITNESS/MSE = {best_func.fitness}'
 
 print(rslt_msg)
 
 best_func.plot_approximation(target_data=data, data_name='Silver_data')
 # %%
-best_func.plot_approximation(target_data=data)
+optoinal_msg  = str(round(best_func.MSE,3))
+save_run(Bronze_population,data_name = 'Silver', folder="Saved_Runs",optional = '')
 
 # %%
 np.random.seed(6)
