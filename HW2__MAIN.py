@@ -115,10 +115,12 @@ class Function_node(object):
 class NP_Heap(Function_node):
     def __init__(self, length=2, Heap=None, Randomize=False, max_depth=4, const_prob=.45, C_range=(-10, 10)):
         self.heap = np.full(length, None, dtype=object)
-        # ALL Operators ('+', '-', '*', '/', '^', 'sin', 'cos')
+        # ALL Operators ('+', '-', '*', '/', 'sin', 'cos','^',
         self.operators = ('*', '+', '-', '/', 'sin', 'cos')
         self.trig_operators = ('sin', 'cos')
         self.non_operator = ('X', 'const')
+        self.MSE = None
+        self.fitness = None
 
         if Randomize:
             self.Random_Heap(max_depth=max_depth,
@@ -445,21 +447,24 @@ class NP_Heap(Function_node):
         return node_val
     # **** END NODE EVAL   ***
 
-    def MSE(self, point_cloud, plotting=False):
+    def get_MSE(self, point_cloud, plotting=False, T=.05):
         # RECALL: MSE = (1/n) * Σ(actual – forecast) ^2
         # TODO subsection (skip every other point)
         X_arr = point_cloud[:, 0]
         y = point_cloud[:, 1]
         y_pred = np.array([self.evaluate(X=x) for x in X_arr])
-        MSE = np.sum(np.square(y_pred-y)/y.shape[0])
-        #TODO Self.ypred = y_pred to store at heap
+        self.MSE = np.sum(np.square(y_pred-y)/y.shape[0])
+        self.fitness = np.exp(-T*self.MSE) + 1e-6
+        self.y_pred = y_pred  # helpful for difference calcs
+        # TODO Self.ypred = y_pred to store at heap
         if plotting:
             self.plot_approximation(X_arr, y_pred, y_true=y)
-        return MSE
+        return self.MSE
 
-    def fitness(self, target_data, T=.05):
-        MSE = self.MSE(target_data)
-        return np.exp(-T*MSE) + 1e-6, MSE
+    def get_fitness(self, target_data, T=.05):
+        self.get_MSE(target_data, T=T)
+        #self.fitness = np.exp(-T*MSE) + 1e-6
+        return self.fitness
 
  # #### EP Functions ########## :
     '''
@@ -472,7 +477,7 @@ class NP_Heap(Function_node):
     '''
 
     # TODO newar zero increase mutation size
-    def Constant_Mutation(self, change_prcnt=.02, min_mutation=.05):
+    def Constant_Mutation(self, change_prcnt=.05, min_mutation=.25):
         # small change to constants and addition/substraction to variables
         # basic: for node in heap, if name = const +_ X%
         for node in self.heap:
@@ -514,10 +519,6 @@ class NP_Heap(Function_node):
         # adds random subtree to some function
         pass
 
-    def NUCLEAR_DIVERSIY(self):
-        #
-        pass
-
     def subtree(self, indx):
         subtree_ind = [indx]
         subtree_depth = self.depth() - int(m.floor(m.log2(indx)))  # heap depth - node depth
@@ -539,7 +540,7 @@ def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 1
         function = NP_Heap(Randomize=True, max_depth=max_depth,
                            const_prob=const_prob,
                            C_range=C_range)
-        MSE_i = function.MSE(data)
+        MSE_i = function.get_MSE(data)
         if MSE_i < best_function_err:
             best_solution = function
             best_function_err = MSE_i
@@ -573,7 +574,7 @@ def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
     else:
         Best_Function = given_function
 
-    Min_MSE = Best_Function.MSE(target_data)
+    Min_MSE = Best_Function.get_MSE(target_data)
     MSE_log = []
     Improved = True
     step_num = 0
@@ -585,7 +586,7 @@ def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
             # loops N times testing nearby points
             step = gen_parent.copy()
             step.Constant_Mutation(change_prcnt=mutate_prcnt_change)
-            step_MSE = step.MSE(target_data)
+            step_MSE = step.get_MSE(target_data)
             if step_MSE < Min_MSE:
                 # this will track best step at a position.
                 Best_Function = step
@@ -637,14 +638,14 @@ runtime = time.time() - start
 function.plot_approximation(target_data=Bronze_data)
 print(runtime)
 # %% RUN RSHC
-best_function, performance_log = RSHC(Starts=10,
-                                      step_search_size=25,
+best_function, performance_log = RSHC(Starts=20,
+                                      step_search_size=100,
                                       mutate_prcnt_change=.08,
                                       target_data=Bronze_data,
                                       max_depth=3,
                                       C_range=Y_range_Cu,
                                       Optimized_random=100)
-print(best_function, '\n MSE= ', best_function.MSE(Bronze_data))
+print(best_function, '\n MSE= ', best_function.MSE)
 best_function.plot_approximation(target_data=Bronze_data)
 # %%
 # PRINT RSHC RESULTS
@@ -697,22 +698,22 @@ class Symbolic_Regession_EP(object):
 
     def Update_pop_fitness(self):
         # T is a measure of selection pressure. The higher T the higher the parents are ranked!
-        self.MSE_array = np.array([F.MSE(self.target_data)
+        self.MSE_array = np.array([F.get_MSE(self.target_data, T=self.T)
                                    for F in self.population])
         # addind this constant cus they all suck at the beginning lol
-        self.fitness_arr = np.exp(-self.T*self.MSE_array) + 1e-3
+        self.fitness_arr = np.exp(-self.T*self.MSE_array) + 1e-6
         self.fitness_ind = np.argsort(self.fitness_arr)[::-1]
         self.best_fitness = self.fitness_arr[self.fitness_ind[0]]
         self.evaluations += self.population.size
         # return fitness_arr, MSE_array  # Return MSE for printing
         return None
 
-    def get_similarity(F1,F2): 
+    def get_similarity(F1, F2):
         F1_pred = None
         F2_pred = None
         distance = np.mean(np.square(F1_pred-F2_pred))
         return 1/distance
-    
+
     def fitness_prop_Slection(self, N=2):
         #fitness_arr, _ = self.Update_pop_fitness(T=T)
         #fitness_ind = np.argsort(self.fitness_arr)[::-1]
@@ -762,27 +763,48 @@ class Symbolic_Regession_EP(object):
 
         # Mutate the children
         self.Mutate(C1, C2)
-
         # calculate their fitness (need to test this)
-        C1_fitness, C1_MSE = C1.fitness(self.target_data, self.T)
-        C2_fitness, C2_MSE = C2.fitness(self.target_data, self.T)
+        C1.get_fitness(self.target_data, self.T)
+        C2.get_fitness(self.target_data, self.T)
         self.evaluations += 2
 
-        # Select the best two between parent and new children
+        # DETERMINISTIC CROWDING:
+        # note we now store y predictions in the function obj to avoid re-evaluation, just np operations!
+        D_P1C1 = self.get_distance(P1, C1)
+        D_P2C2 = self.get_distance(P2, C2)
+        D_P1C2 = self.get_distance(P1, C2)
+        D_P2C1 = self.get_distance(P2, C1)
+        if (D_P1C1 + D_P2C2) < (D_P1C2 + D_P2C1):
+            if C1.fitness > P1.fitness:
+                self.population[P1_ind] = C1
+
+            if C2.fitness > P2.fitness:
+                self.population[P2_ind] = C2
+
+        else:
+            if C1.fitness > P2.fitness:
+                self.population[P2_ind] = C1
+
+            if C2.fitness > P1.fitness:
+                self.population[P1_ind] = C2
+
+        '''
+        # NAIVE REPLACEMENT: Select the best two between parent and new children
         # TODO Implement discrete diversity maintenance here
         candidates = np.array([P1, P2, C1, C2])
-        C_fitness = np.array([self.fitness_arr[P1_ind],
-                              self.fitness_arr[P2_ind],
-                              C1_fitness,
-                              C2_fitness])
+        C_fitness = np.array([P1.fitness,
+                              P2.fitness,
+                              C1.fitness,
+                              C2.fitness])
         best = np.argsort(C_fitness)[::-1]
 
         # overwrite the two parent indecies with the best population and their fitnesses
-        # TODO also overwrite MSE and have it returned when you calc fitness
         self.population[P1_ind] = candidates[best[0]]
         self.fitness_arr[P1_ind] = C_fitness[best[0]]
         self.population[P2_ind] = candidates[best[1]]
         self.fitness_arr[P2_ind] = C_fitness[best[1]]
+
+        '''
 
         self.fitness_ind = np.argsort(self.fitness_arr)[::-1]
         self.best_fitness = self.fitness_arr[self.fitness_ind[0]]
@@ -795,7 +817,10 @@ class Symbolic_Regession_EP(object):
         C2.Constant_Mutation(change_prcnt=self.change_prcnt,
                              min_mutation=self.min_mutation)
 
-    def run(self, max_evaluations=1e4, Update_freq=250, min_fitness=.75, **kwargs):
+    def get_distance(self, F1, F2):
+        return np.sum(np.square(F1.y_pred - F2.y_pred))/F2.y_pred.size
+
+    def run(self, max_evaluations=1e4, Update_freq=250, min_fitness=.75, Plotting=False):
 
         # technically cheating: we call in init. self.evaluations = 0
 
@@ -817,14 +842,20 @@ class Symbolic_Regession_EP(object):
                     log_insance += 1
                     print(f'logging chck in # {log_insance}')
                     count = self.evaluations // Update_freq + 1
+                    best_function = self.population[self.fitness_ind[0]]
+
                     self.eval_log.append(self.evaluations)
                     self.ith_population_fitnesses.append(self.fitness_arr)
-                    self.ith_best_function.append(self.best_fitness)
+                    self.ith_best_function.append(best_function)
+
+                    if Plotting:
+                        best_function.plot_approximation(target_data=data,
+                                                         data_name=str(log_insance))
 
                 # improvement bar (comment out & delete the tqdm block for speed / parallel if needed)
                 # TODO MSE array stuff
                 pbar.update(self.evaluations - past_evals)
-                pbar.set_description(f'Best Fitness: {self.best_fitness:.4f}')
+                pbar.set_description(f'Best Fitness: {self.best_fitness:.5f}')
                 past_evals = self.evaluations
 
         return None
@@ -834,15 +865,16 @@ class Symbolic_Regession_EP(object):
 # testing  EP in this cell
 #execution_time = timeit.timeit(lambda: Symbolic_Regession_EP(250, target_data=Bronze_data), number=1)
 data = Silver_data
-Bronze_population = Symbolic_Regession_EP(2000, target_data=data)
-Bronze_population.run(min_fitness=.98)
+Bronze_population = Symbolic_Regession_EP(2500, target_data=data)
+Bronze_population.run(min_fitness=.995, Update_freq=500,
+                      max_evaluations=4e4, Plotting=False)
 
 best_ind = Bronze_population.fitness_ind[0]
 best_func = Bronze_population.population[best_ind]
 
 rslt_msg = ''
 rslt_msg += f' Best function ' + best_func.build_function()
-rslt_msg += f'  - FITNESS/MSE = {best_func.fitness(data)}'
+rslt_msg += f'  - FITNESS/MSE = {best_func.fitness}'
 
 print(rslt_msg)
 
@@ -851,16 +883,34 @@ best_func.plot_approximation(target_data=data, data_name='Silver_data')
 best_func.plot_approximation(target_data=data)
 
 # %%
-np.random.seed(7)
-data = Silver_data
-sin_test = Symbolic_Regession_EP(2, target_data=data)
+np.random.seed(6)
+data = Bronze_data
+test_pop = Symbolic_Regession_EP(10, target_data=data)
+test_pop.Update_pop_fitness()
+f_arr = [f.fitness for f in test_pop.population]
+m_arr = [f.MSE for f in test_pop.population]
+print(f_arr)
+print(m_arr)
 
-for f in sin_test.population:
+F1, F2 = test_pop.population[2], test_pop.population[7]
+#F1.plot_approximation(target_data = data)
+F3 = F1.copy()
+F3.get_fitness(data)
+F3.Constant_Mutation()
+F3.Constant_Mutation()
+F3.Constant_Mutation()
+F3.heap[4].function_name = 'sin'
+F3.get_fitness(data)
+print(F3.heap[4])
+print(F1)
+print(F3)
 
-    print(f)
-    print(f.MSE(data))
 
-# %%
-t = NP_Heap(Randomize=True)
-print(t)
-t.plot_approximation(target_data=data, data_name='puto')
+def get_distance(F1, F2):
+    distance_mse = np.sum(np.square(F1.y_pred - F2.y_pred))/F2.y_pred.size
+    print(distance_mse)
+    return distance_mse
+
+
+d = get_distance(F1, F2)
+d = get_distance(F1, F3)
