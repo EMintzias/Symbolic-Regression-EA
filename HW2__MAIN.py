@@ -10,7 +10,7 @@ import sys
 import pdb
 import math
 import math as m
-from icecream import ic
+#from icecream import ic
 import pandas as pd
 import random
 import time
@@ -452,7 +452,7 @@ class NP_Heap(Function_node):
         y = point_cloud[:, 1]
         y_pred = np.array([self.evaluate(X=x) for x in X_arr])
         MSE = np.sum(np.square(y_pred-y)/y.shape[0])
-
+        #TODO Self.ypred = y_pred to store at heap
         if plotting:
             self.plot_approximation(X_arr, y_pred, y_true=y)
         return MSE
@@ -707,6 +707,12 @@ class Symbolic_Regession_EP(object):
         # return fitness_arr, MSE_array  # Return MSE for printing
         return None
 
+    def get_similarity(F1,F2): 
+        F1_pred = None
+        F2_pred = None
+        distance = np.mean(np.square(F1_pred-F2_pred))
+        return 1/distance
+    
     def fitness_prop_Slection(self, N=2):
         #fitness_arr, _ = self.Update_pop_fitness(T=T)
         #fitness_ind = np.argsort(self.fitness_arr)[::-1]
@@ -808,7 +814,8 @@ class Symbolic_Regession_EP(object):
                 if self.evaluations // Update_freq >= count:
                     # TODO only call this with temperature updates.
                     # self.Update_pop_fitness()
-                    print(f'logging chck in # {log_insance+=1}')
+                    log_insance += 1
+                    print(f'logging chck in # {log_insance}')
                     count = self.evaluations // Update_freq + 1
                     self.eval_log.append(self.evaluations)
                     self.ith_population_fitnesses.append(self.fitness_arr)
