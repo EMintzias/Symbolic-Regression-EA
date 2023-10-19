@@ -20,7 +20,7 @@ import datetime
 import pickle
 import os
 import concurrent
-
+from concurrent.futures import ThreadPoolExecutor
 # %% --------------------------------------------------
 # LOAD DATA:
 Bronze_data = np.loadtxt("Bronze.txt", dtype=float, delimiter=',')
@@ -668,7 +668,7 @@ class Symbolic_Regession_EP(object):
 
     def __init__(self, pop_size, target_data, tree_depth=4,
                  const_prob=.35, init_Constant_Range=(-10, 10),
-                 T=.05):
+                 T=.05, cores=3):
 
         self.target_data = target_data
         self.T = T
@@ -679,7 +679,7 @@ class Symbolic_Regession_EP(object):
         self.eval_log = []
         self.ith_population_fitnesses = []
         self.ith_best_function = []
-
+        self.cores = cores
         if pop_size % 2:
             pop_size += 1  # ensure population num is even (now irrelevant)
         new_population = np.full(pop_size, None)
@@ -703,11 +703,20 @@ class Symbolic_Regession_EP(object):
         output += f'\n Best MSE = {round(self.MSE_array[best_ind],3)}, Fitness = {round(self.fitness_arr[best_ind],3)}'
         return output
 
+    def Parallel_MSE(self):
+        def compute_mse(function):
+            return function.get_MSE(self.target_data, T=self.T)
+        with ThreadPoolExecutor(self.cores) as executor:
+            mse_results = list(executor.map(compute_mse, self.population,
+                                            [self.T] * len(self.population),
+                                            [self.target_data] * len(self.population)))
+            return np.array(mse_results)
+
     def Update_pop_fitness(self):
         # T is a measure of selection pressure. The higher T the higher the parents are ranked!
-        self.MSE_array = np.array([F.get_MSE(self.target_data, T=self.T)
-                                   for F in self.population])
-        # addind this constant cus they all suck at the beginning lol
+        self.MSE_array = np.array(
+            [F.get_MSE(self.target_data, T=self.T) for F in self.population])
+        # self.MSE_array = self.Parallel_MSE() #TODO
         self.fitness_arr = np.exp(-self.T*self.MSE_array) + 1e-6
         self.fitness_ind = np.argsort(self.fitness_arr)[::-1]
         self.best_fitness = self.fitness_arr[self.fitness_ind[0]]
@@ -775,7 +784,6 @@ class Symbolic_Regession_EP(object):
         C2.get_fitness(self.target_data, self.T)
         self.evaluations += 2
 
-        '''
         # DETERMINISTIC CROWDING:
         # note we now store y predictions in the function obj to avoid re-evaluation, just np operations!
         D_P1C1 = self.get_distance(P1, C1)
@@ -811,7 +819,7 @@ class Symbolic_Regession_EP(object):
         self.fitness_arr[P1_ind] = C_fitness[best[0]]
         self.population[P2_ind] = candidates[best[1]]
         self.fitness_arr[P2_ind] = C_fitness[best[1]]
-
+        '''
         self.fitness_ind = np.argsort(self.fitness_arr)[::-1]
         self.best_fitness = self.fitness_arr[self.fitness_ind[0]]
 
@@ -826,35 +834,43 @@ class Symbolic_Regession_EP(object):
     def get_distance(self, F1, F2):
         return np.sum(np.square(F1.y_pred - F2.y_pred))/F2.y_pred.size
 
-    def check_diversity(self):
+    def plot_diversity(self):
+        data = self.target_data
+        pop_size = self.population.size
+        increment = pop_size // 9
+
         y_data = [[f.y_pred]
-                  for f in self.population[self.fitness_ind[0:900:100]]]
+                  for f in self.population[self.fitness_ind[0:pop_size:increment]]]
 
         # Create a figure with subplots
         fig, axes = plt.subplots(3, 3, figsize=(10, 10))
-        labels = [f'{100*i} th best fucn' for i in range(9)]
+        labels = [f'{increment*i} th best fucn' for i in range(9)]
         colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'purple', 'orange']
         # Plot data in each subplot
         for i in range(3):
             for j in range(3):
                 ax = axes[i, j]
                 ax.plot(data[:, 0], y_data[i*3 + j][0],
-                        color=colors[i * 3 + j], label=labels[i * 3 + j])  # Replace with your image or data
+                        color=colors[i * 3 + j], label=labels[i * 3 + j])
+                ax.plot(data[:, 0], data[:, 1], label='Target')
         for ax in axes.flat:
-            ax.legend()
+            ax.legend(loc=2)
         # Adjust layout and show the plot
         plt.tight_layout()
         plt.show()
 
     def run(self, max_evaluations=1e4, Update_freq=250, min_fitness=.75,
-            min_MSE=.5, Plotting=False, num_threads=3):
+            min_MSE=.5, Plotting=False, run_cores=None):
         start_time = time.time()
+        last_time = start_time
         # technically cheating: we call in init. self.evaluations = 0
         Best_MSE = self.population[self.fitness_ind[0]].MSE
-        count, log_insance = 0, 0
+        count, log_insance, last_evls = 0, 0, 0
 
-        self.barrier = threading.Barrier(num_threads)
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+        cores = run_cores if run_cores else self.cores
+        print('num_cores:', cores)
+        self.barrier = threading.Barrier(cores)
+        with ThreadPoolExecutor(max_workers=cores) as executor:
             while Best_MSE > min_MSE and not self.evaluations > max_evaluations:
                 # TODO update fitness based on some T criteria
                 P1_ind, P2_ind = self.fitness_prop_Slection()
@@ -865,16 +881,12 @@ class Symbolic_Regession_EP(object):
 
                 # if logging frequency
                 if self.evaluations // Update_freq >= count:
+
                     # TODO only call this with temperature updates.
                     # self.Update_pop_fitness()
                     # self.barrier.wait() #lets get on the same page so we dont plot 30 times
                     log_insance += 1
-                    msg_out = ''
-                    msg_out += f'Log #{log_insance} | Best_MSE = {Best_MSE:.5f} | '
-                    msg_out += f' Eval:{self.evaluations}/{int(max_evaluations)}'
-                    msg_out += f' | Time:{round((time.time()-start_time)/60,1)}mins.'
 
-                    print(msg_out)
                     count = self.evaluations // Update_freq + 1
                     best_function = self.population[self.fitness_ind[0]]
 
@@ -882,9 +894,20 @@ class Symbolic_Regession_EP(object):
                     self.ith_population_fitnesses.append(self.fitness_arr)
                     self.ith_best_function.append(best_function)
 
+                    # PRINT:
+                    elapsed = (time.time()-last_time)/60
+                    msg_out = ''
+                    msg_out += f'Log #{log_insance} | Best_MSE = {Best_MSE:.5f} | '
+                    msg_out += f' spped:{round((self.evaluations-last_evls)/elapsed,2)} eval/min'
+                    msg_out += f" | Time:{round((time.time()- start_time)/60,1)}mins. | Progress {round(self.evaluations/max_evaluations,1)}"+'%'
+
+                    print(msg_out)
+                    last_evls = self.evaluations
+                    last_time = time.time()
+
                     if Plotting or log_insance % 10 == 1:
-                        best_function.plot_approximation(target_data=data,
-                                                         data_name='log #'+str(log_insance))
+                        # best_function.plot_approximation(target_data=data,data_name='log #'+str(log_insance))
+                        self.plot_diversity()
 
         print(f'Exiting with best mse: {Best_MSE:.3f}')
         return None
@@ -912,27 +935,32 @@ def save_run(Population, data_name, folder="saved_runs", optional=''):
 # %%
 # testing  EP in this cell
 #execution_time = timeit.timeit(lambda: Symbolic_Regession_EP(250, target_data=Bronze_data), number=1)
-
+np.random.seed(1)
 data = Silver_data
-Bronze_population = Symbolic_Regession_EP(1000, target_data=data, T=.05)
-Bronze_population.run(min_MSE=.1, Update_freq=500,
-                      max_evaluations=5e4, Plotting=False,
+Silver_population = Symbolic_Regession_EP(
+    2500, target_data=data, T=.05, cores=3)
+Silver_population.run(min_MSE=.05, Update_freq=500,
+                      max_evaluations=1e6, Plotting=False,
                       )
 
-best_ind = Bronze_population.fitness_ind[0]
-best_func = Bronze_population.population[best_ind]
+best_ind = Silver_population.fitness_ind[0]
+best_func = Silver_population.population[best_ind]
 
 rslt_msg = ''
 rslt_msg += f' Best function \n' + best_func.__str__()
 rslt_msg += f'  - FITNESS/MSE = {best_func.fitness}'
 
 print(rslt_msg)
+print(Silver_population)
 
 best_func.plot_approximation(target_data=data, data_name='Silver_data')
+
 # %%
 optoinal_msg = str(round(best_func.MSE, 3))
-save_run(Bronze_population, data_name='Silver',
-         folder="Saved_Runs", optional='')
+save_run(Silver_population, data_name='Silver',
+         folder="Saved_Runs", optional=optoinal_msg)
+# %%
+
 
 # %%
 
@@ -949,11 +977,14 @@ arr = np.arange(0, 101)
 
 
 def check_diversity(POP):
-    y_data = [[f.y_pred] for f in POP.population[POP.fitness_ind[0:900:100]]]
+    pop_size = POP.population.size
+    increment = pop_size // 9
+    y_data = [[f.y_pred]
+              for f in POP.population[POP.fitness_ind[0:pop_size:increment]]]
 
     # Create a figure with subplots
     fig, axes = plt.subplots(3, 3, figsize=(10, 10))
-    labels = [f'{100*i} th best fucn' for i in range(9)]
+    labels = [f'{increment*i} th best fucn' for i in range(9)]
     colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'purple', 'orange']
     # Plot data in each subplot
     for i in range(3):
