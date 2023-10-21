@@ -540,21 +540,22 @@ def save_run(Population, data_name, folder="saved_runs", optional=''):
         pickle.dump(Population, file)
 
 
-# RANDOM SEARCH LEARNING CURVE PLOT
-level = 'Bronze.txt'
-data = np.loadtxt(level, dtype=float, delimiter=',')
-Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
-iterations = 5
-evals = 10000
+if __name__ == '__main__':
+    # RANDOM SEARCH LEARNING CURVE PLOT
+    level = 'Bronze.txt'
+    data = np.loadtxt(level, dtype=float, delimiter=',')
+    Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
+    iterations = 5
+    evals = 10000
 
-# Runs
-Population = np.full(iterations, None, dtype=object)
-for i in range(iterations):
-    function, mse_arr = Random_Search(evals,
-                                  data=data,
-                                  max_depth=5,
-                                  C_range=Y_range)
-    Population[i] = ((function, mse_arr))
+    # Runs
+    Population = np.full(iterations, None, dtype=object)
+    for i in range(iterations):
+        function, mse_arr = Random_Search(evals,
+                                    data=data,
+                                    max_depth=5,
+                                    C_range=Y_range)
+        Population[i] = ((function, mse_arr))
 
-# Save runs
-save_run(Population, 'RS', folder='Results_{}'.format(level), optional='{}_tests_{}_evals'.format(iterations, evals))
+    # Save runs
+    save_run(Population, 'RS', folder='Results_{}'.format(level), optional='{}_tests_{}_evals'.format(iterations, evals))
