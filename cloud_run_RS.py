@@ -547,6 +547,7 @@ if __name__ == '__main__':
     Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
     iterations = 5
     evals = input("Enter number of evals (100,000): ")
+    evals = int(evals)
 
     # Runs
     Population = np.full(iterations, None, dtype=object)
