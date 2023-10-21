@@ -551,7 +551,7 @@ if __name__ == '__main__':
 
     # Runs
     Population = np.full(iterations, None, dtype=object)
-    for i in range(iterations):
+    for i in tqdm(range(iterations), desc='Iterations:', leave=False):
         function, mse_arr = Random_Search(evals,
                                     data=data,
                                     max_depth=5,
