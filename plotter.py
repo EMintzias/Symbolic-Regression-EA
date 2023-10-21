@@ -1,4 +1,6 @@
-# HW_2 Sandbox
+#%%
+# SETUP & INSTANTIATE NECESSARY CLASSES
+
 # IMPORT FUNCTIONS
 import timeit
 from tqdm import tqdm
@@ -500,62 +502,54 @@ class NP_Heap(Function_node):
         return subtree_ind, self.heap[subtree_ind]
 
 
-############### RANDOM SEARCH ###########################
-###### RANDOM & HC ###############
-def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 10)):
-    MSE_log = []
-    best_solution = None
 
-    best_function_err = 1e9
-    for i in tqdm(range(evaluations), desc='Random Search:', leave=False):
-        function = NP_Heap(Randomize=True, max_depth=max_depth,
-                           const_prob=const_prob,
-                           C_range=C_range)
-        MSE_i = function.get_MSE(data)
-        if MSE_i < best_function_err:
-            best_solution = function
-            best_function_err = MSE_i
-            MSE_log.append([i, MSE_i])
-        else:
-            MSE_log.append([i, best_function_err])
-
-    return best_solution, np.array(MSE_log)
+#%%
+# LOAD DATA
+filename = 'Results_Bronze.txt/RS_date_Oct-21_22-21_5_tests_10000_evals.pkl'
+# Open the file in read-binary mode ('rb') to read the data.
+with open(filename, 'rb') as file:
+    # Use pickle.load() to load the data from the file.
+    data = pickle.load(file)
 
 
-# Pickle & save data somewhere
-def save_run(Population, data_name, folder="saved_runs", optional=''):
-    if not os.path.exists(folder):
-        os.makedirs(folder)
 
-    # Get the current date and time
-    current_date = datetime.datetime.now()
-    # Format the date without the year
-    date_str = current_date.strftime("%b-%d_%H-%M")
+#%%
+# PREPARE DATA
 
-    # Define the file name
-    file_name = f"{folder}/{data_name}_date_{date_str}_{optional}.pkl"
+x_arr = np.full((len(data),len(data[0][1])), None, dtype=float)
+y_arr = np.full((len(data),len(data[0][1])), None, dtype=float)
 
-    # Serialize and save the object to the file
-    with open(file_name, 'wb') as file:
-        pickle.dump(Population, file)
+for i in range(len(data)):
+    for j in range(len(data[0][1])):
+        x_arr[i][j] = j
+        y_arr[i][j] = data[i][1][j][1]
 
+x_mean = np.mean(np.array(x_arr), axis=0)
+y_mean = np.mean(np.array(y_arr),axis=0)
 
-if __name__ == '__main__':
-    # RANDOM SEARCH LEARNING CURVE PLOT
-    level = input("Enter level (Bronze.txt, Silver.txt, Gold.txt): ")
-    data = np.loadtxt(level, dtype=float, delimiter=',')
-    Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
-    iterations = 5
-    evals = input("Enter number of evals (100,000): ")
+errors = np.std(np.array(y_arr), axis=0) / np.sqrt(np.array(y_arr).shape[0])
+x_err = []
+y_err = []
+err = []
+for i in range(len(data[0][1])):
+    if i % (len(data[0][1])/10) == 0 and i != 0:
+        x_err.append(i)
+        y_err.append(y_mean[i])
+        err.append(errors[i])
 
-    # Runs
-    Population = np.full(iterations, None, dtype=object)
-    for i in range(iterations):
-        function, mse_arr = Random_Search(evals,
-                                    data=data,
-                                    max_depth=5,
-                                    C_range=Y_range)
-        Population[i] = ((function, mse_arr))
+print(len(x_err))
 
-    # Save runs
-    save_run(Population, 'RS', folder='Results_{}'.format(level), optional='{}_tests_{}_evals'.format(iterations, evals))
+# %%
+# PLOT LEARNING CURVE
+plt.figure(figsize=(10, 10))
+plt.plot(x_mean, y_mean, '-', label='RS', color='#3CB371')
+plt.errorbar(x_err, y_err, yerr=err, color='#3CB371', fmt='o', capsize=5, markersize=4)
+plt.title("Random Search Learning Curve for 'Bronze.txt' (tests: {})".format(len(data)))
+plt.xlabel('Evaluations')
+plt.ylabel('MSE')
+plt.yscale('log')
+plt.legend()
+plt.grid(True)
+#plt.savefig('Results_Bronze.txt/RS_Learning_Curve.pdf', dpi=300)
+plt.show()
+# %%

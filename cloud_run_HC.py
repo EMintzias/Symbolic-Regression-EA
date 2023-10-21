@@ -522,6 +522,84 @@ def Random_Search(evaluations, data, max_depth=3, const_prob=.5, C_range=(-10, 1
     return best_solution, np.array(MSE_log)
 
 
+###     hill climber         ####
+# TODO Improve mutation this is very slow
+# TODO implement operator mutations
+def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
+       const_prob=.5, C_range=(-10, 10), given_function=None, Optimized_random=0):
+    '''
+    This function will search random children and move in the best direction from an optimized random start. 
+
+    '''
+    if not given_function:
+        # initialize return functions
+        if Optimized_random:  # does a quick random search to eliminate the trash
+            # TODO diversity issue this should be deliberately implemented at the random function level
+            Best_Function, _ = Random_Search(evaluations=Optimized_random,
+                                             data=target_data,
+                                             max_depth=max_depth,
+                                             C_range=C_range)
+        else:
+            Best_Function = NP_Heap(length=32)
+            Best_Function.Random_Heap(max_depth=max_depth,
+                                      const_prob=const_prob,
+                                      C_range=C_range)
+    else:
+        Best_Function = given_function
+
+    Min_MSE = Best_Function.get_MSE(target_data)
+    MSE_log = []
+    Improved = True
+    step_num = 0
+    while Improved:
+        Improved = False  # to be flagged true if any of the children is better than the parent
+        # parent of all children to search steps based on the curent best
+        gen_parent = Best_Function.copy()
+        for _ in range(step_search_size):
+            # loops N times testing nearby points
+            step = gen_parent.copy()
+            step.Constant_Mutation(change_prcnt=mutate_prcnt_change)
+            step_MSE = step.get_MSE(target_data)
+            if step_MSE < Min_MSE:
+                # this will track best step at a position.
+                Best_Function = step
+                Min_MSE = step_MSE
+                Improved = True  # only needs to happen once to be overritedn
+        step_num += 1
+        MSE_log.append([step_num*step_search_size, Min_MSE])
+
+        #print('loop ', step_num, ' DONE')
+        #print('Best child \n',Best_Function)
+        #print('min MSE', Min_MSE)
+
+    return Best_Function, MSE_log
+# Random starts
+
+
+def RSHC(Starts, target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.02,
+         const_prob=.5, C_range=(-10, 10), Optimized_random=0):
+
+    improvement_log = []
+    total_evals = 0
+    Best_MSE = 1e7
+    best_function = None
+    for i in tqdm(range(Starts), desc='RSHC:'):
+        function, mse_arr = HC(step_search_size=step_search_size,
+                               target_data=target_data,
+                               mutate_prcnt_change=mutate_prcnt_change,
+                               max_depth=max_depth,
+                               const_prob=const_prob,
+                               C_range=C_range,
+                               Optimized_random=Optimized_random)
+        evals, best_MSE_i = mse_arr[-1]
+        total_evals += evals
+        if best_MSE_i < Best_MSE:
+            improvement_log.append([total_evals, best_MSE_i])
+            best_function = function
+            Best_MSE = best_MSE_i
+    return best_function, improvement_log
+
+
 # Pickle & save data somewhere
 def save_run(Population, data_name, folder="saved_runs", optional=''):
     if not os.path.exists(folder):
@@ -542,15 +620,24 @@ def save_run(Population, data_name, folder="saved_runs", optional=''):
 
 if __name__ == '__main__':
     # RANDOM SEARCH LEARNING CURVE PLOT
-    level = input("Enter level (Bronze.txt, Silver.txt, Gold.txt): ")
+    level = 'Bronze.txt'
     data = np.loadtxt(level, dtype=float, delimiter=',')
     Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
     iterations = 5
-    evals = input("Enter number of evals (100,000): ")
+    evals = 10000
 
     # Runs
     Population = np.full(iterations, None, dtype=object)
-    for i in range(iterations):
+
+    best_function, performance_log = RSHC(Starts=20,
+                                        step_search_size=100,
+                                        mutate_prcnt_change=.08,
+                                        target_data=Bronze_data,
+                                        max_depth=3,
+                                        C_range=Y_range_Cu,
+                                        Optimized_random=100)
+
+    for i in tqdm(range(iterations), desc='Iterations:', leave=False):
         function, mse_arr = Random_Search(evals,
                                     data=data,
                                     max_depth=5,
