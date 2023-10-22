@@ -507,7 +507,7 @@ class NP_Heap(Function_node):
 # LOAD DATA
 level = 'Platinum.txt'
 folder = 'Results_{}'.format(level)
-filename = '{}/HC_date_Oct-22_08-56_5_tests_128_evals.pkl'.format(folder)
+filename = '{}/HC_date_Oct-22_18-24_5_tests_180_evals.pkl'.format(folder)
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -602,8 +602,5 @@ for j in range(len(data)):
     fig.savefig('{}/HC_Solution_test#{}.pdf'.format(folder_path, j), dpi=300)
     plt.show()
 
-#%%
-for i in range(len(data)):
-    data[i][0].plot_approximation(target_data=true_data)
-    print(data[i][0])
-    print(data[i][0].MSE)
+
+# %%
