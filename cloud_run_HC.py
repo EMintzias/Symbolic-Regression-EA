@@ -633,7 +633,7 @@ if __name__ == '__main__':
     Population = np.full(iterations, None, dtype=object)
     for i in tqdm(range(iterations), desc='Iterations:', leave=False):
         best_function, performance_log = RSHC(Starts=evals,
-                                            step_search_size=100,
+                                            step_search_size=128,
                                             mutate_prcnt_change=.08,
                                             target_data=data,
                                             max_depth=5,
