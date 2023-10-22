@@ -623,7 +623,7 @@ def save_run(Population, data_name, folder="saved_runs", optional=''):
 if __name__ == '__main__':
     # PARALLEL HC LEARNING CURVE PLOT
     files = ['Silver.txt', 'Gold.txt', 'Platinum.txt']
-    for i in tqdm(range(files), desc='Files:', leave=False):
+    for i in tqdm(range(len(files)), desc='Files:', leave=False):
         level = i #input("Enter level (Bronze.txt, Silver.txt, Gold.txt): ")
         data = np.loadtxt(level, dtype=float, delimiter=',')
         Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
