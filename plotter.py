@@ -505,7 +505,7 @@ class NP_Heap(Function_node):
 
 #%%
 # LOAD DATA
-filename = 'Results_Bronze.txt/HC_date_Oct-22_05-20_5_tests_100_evals.pkl'
+filename = 'Results_Bronze.txt/HC_date_Oct-22_06-27_5_tests_128_evals.pkl'
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -520,7 +520,6 @@ for i in data:
         x_largest = i[1][-1][0]
 
 print(x_largest)
-print(data[0][1][6][1])
 #%%
 # PREPARE DATA
 
@@ -556,6 +555,7 @@ for i in range(len(data[0][1])):
         y_err.append(y_mean[i])
         err.append(errors[i])
 
+
 # %%
 # PLOT LEARNING CURVE
 plt.figure(figsize=(10, 10))
@@ -567,7 +567,7 @@ plt.ylabel('MSE')
 plt.yscale('log')
 plt.legend()
 plt.grid(True)
-plt.savefig('Results_Bronze.txt/HC_Learning_Curve_59400evals.pdf', dpi=300)
+plt.savefig('Results_Bronze.txt/HC_Learning_Curve_111872evals.pdf', dpi=300)
 plt.show()
 
 

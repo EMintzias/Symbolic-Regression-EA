@@ -622,24 +622,26 @@ def save_run(Population, data_name, folder="saved_runs", optional=''):
 
 if __name__ == '__main__':
     # PARALLEL HC LEARNING CURVE PLOT
-    level = input("Enter level (Bronze.txt, Silver.txt, Gold.txt): ")
-    data = np.loadtxt(level, dtype=float, delimiter=',')
-    Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
-    iterations = 5
-    evals = input("Enter number of starts (100): ")
-    evals = int(evals)
+    files = ['Silver.txt', 'Gold.txt', 'Platinum.txt']
+    for i in tqdm(range(files), desc='Files:', leave=False):
+        level = i #input("Enter level (Bronze.txt, Silver.txt, Gold.txt): ")
+        data = np.loadtxt(level, dtype=float, delimiter=',')
+        Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
+        iterations = 5
+        evals = 128 #input("Enter number of starts (100): ")
+        evals = int(evals)
 
-    # Runs
-    Population = np.full(iterations, None, dtype=object)
-    for i in tqdm(range(iterations), desc='Iterations:', leave=False):
-        best_function, performance_log = RSHC(Starts=evals,
-                                            step_search_size=128,
-                                            mutate_prcnt_change=.08,
-                                            target_data=data,
-                                            max_depth=5,
-                                            C_range=Y_range,
-                                            Optimized_random=100)
-        Population[i] = ((best_function, performance_log))
+        # Runs
+        Population = np.full(iterations, None, dtype=object)
+        for i in tqdm(range(iterations), desc='Iterations:', leave=False):
+            best_function, performance_log = RSHC(Starts=evals,
+                                                step_search_size=128,
+                                                mutate_prcnt_change=.08,
+                                                target_data=data,
+                                                max_depth=5,
+                                                C_range=Y_range,
+                                                Optimized_random=100)
+            Population[i] = ((best_function, performance_log))
 
-    # Save runs
-    save_run(Population, 'HC', folder='Results_{}'.format(level), optional='{}_tests_{}_evals'.format(iterations, evals))
+        # Save runs
+        save_run(Population, 'HC', folder='Results_{}'.format(level), optional='{}_tests_{}_evals'.format(iterations, evals))
