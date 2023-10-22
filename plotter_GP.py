@@ -764,25 +764,45 @@ class Symbolic_Regession_EP(object):
 # LOAD DATA
 level = 'Bronze.txt'
 folder = 'Results_{}'.format(level)
-filename = '{}/GP_date_Oct-22_18-41_10_popsize_5_tests_10_evals.pkl'.format(folder)
+filename = '{}/GP_date_Oct-22_19-26_3000_popsize_5_tests_100000_evals.pkl'.format(folder)
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
     data = pickle.load(file)
 
-print(data)
+
+# to make a dot plot we need to change from fitness to MSE
+# we can also do a convergence plot with fitness actually (since perfect fitness will be 1)
+
 
 #%%
 # PREPARE DATA
+# rearrange the x_arr etc to fill in 100,000 evals & restructure it in the same way we did the HC
+# for nicest plot of each iter we need to plot the last of the best heaps (data[0][1][-1].plot I think)
 
-x_arr = np.full((len(data),len(data[0][1])), None, dtype=float)
-y_arr = np.full((len(data),len(data[0][1])), None, dtype=float)
+x_arr = np.full((len(data), data[0][0][-1]), None, dtype=float)
+y_arr = np.full((len(data), data[0][0][-1]), None, dtype=float)
 
 for i in range(len(data)):
-    for j in range(len(data[0][1])):
+    x_start = 0
+    y_min = 1e4
+    x_max = len(data[i][1])-1
+    for j in range(data[0][0][-1]):
         x_arr[i][j] = j
-        y_arr[i][j] = data[i][1][j][1]
+        if j == data[i][0][x_start]:
+            y_min = data[i][1][x_start].MSE
+            if x_start < x_max:
+                x_start += 1
+        y_arr[i][j] = y_min
 
+print(x_arr)
+print(y_arr)
+
+
+
+
+#%%
+# MEANS
 x_mean = np.mean(np.array(x_arr), axis=0)
 y_mean = np.mean(np.array(y_arr),axis=0)
 
@@ -790,7 +810,7 @@ errors = np.std(np.array(y_arr), axis=0) / np.sqrt(np.array(y_arr).shape[0])
 x_err = []
 y_err = []
 err = []
-for i in range(len(data[0][1])):
+for i in range(data[0][0][-1]):
     if (i % 25000 == 0 and i != 0) or i == 99999:
         print(i)
         x_err.append(i)
