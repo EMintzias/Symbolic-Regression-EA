@@ -747,7 +747,7 @@ class Symbolic_Regession_EP(object):
                     last_evls = self.evaluations
                     last_time = time.time()
 
-                    if Plotting or log_insance % 1000 == 1:
+                    if Plotting or log_insance % 10 == 1:
                         # best_function.plot_approximation(target_data=data,data_name='log #'+str(log_insance))
                         self.plot_diversity()
 
