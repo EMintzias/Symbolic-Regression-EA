@@ -594,6 +594,7 @@ def RSHC(Starts, target_data, step_search_size=128, max_depth=3, mutate_prcnt_ch
                                Optimized_random=Optimized_random)
         evals, best_MSE_i = mse_arr[-1]
         total_evals += evals
+        print(total_evals)
         if best_MSE_i < Best_MSE:
             improvement_log.append([total_evals, best_MSE_i])
             best_function = function
