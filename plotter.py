@@ -505,7 +505,9 @@ class NP_Heap(Function_node):
 
 #%%
 # LOAD DATA
-filename = 'Results_Bronze.txt/HC_date_Oct-22_06-27_5_tests_128_evals.pkl'
+level = 'Bronze.txt'
+folder = 'Results_{}'.format(level)
+filename = '{}/HC_date_Oct-22_06-27_5_tests_128_evals.pkl'.format(folder)   #'Results_Silver.txt/HC_date_Oct-22_07-34_5_tests_128_evals.pkl'
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -522,15 +524,12 @@ for i in data:
 print(x_largest)
 #%%
 # PREPARE DATA
-
-
-
 x_arr = np.full((len(data), x_largest), None, dtype=float)
 y_arr = np.full((len(data), x_largest), None, dtype=float)
 
 for i in range(len(data)):
     x_start = 0
-    y_min = 0
+    y_min = 1e4
     x_max = len(data[i][1])-1
     for j in range(x_largest):
         x_arr[i][j] = j
@@ -541,7 +540,7 @@ for i in range(len(data)):
         y_arr[i][j] = y_min
 
 #%%
-
+# CALCULATE ERORR BARS
 x_mean = np.mean(np.array(x_arr), axis=0)
 y_mean = np.mean(np.array(y_arr),axis=0)
 
@@ -549,26 +548,39 @@ errors = np.std(np.array(y_arr), axis=0) / np.sqrt(np.array(y_arr).shape[0])
 x_err = []
 y_err = []
 err = []
-for i in range(len(data[0][1])):
-    if i % (len(data[0][1])/10) == 0 and i != 0:
+for i in range(len(x_arr[0])):
+    if i % 25000 == 0 and i != 0:
         x_err.append(i)
         y_err.append(y_mean[i])
         err.append(errors[i])
-
+print(len(err))
 
 # %%
 # PLOT LEARNING CURVE
 plt.figure(figsize=(10, 10))
 plt.plot(x_mean, y_mean, '-', label='HC', color='#3CB371')
 plt.errorbar(x_err, y_err, yerr=err, color='#3CB371', fmt='o', capsize=5, markersize=4)
-plt.title("Parallel Hill Climber Learning Curve for 'Bronze.txt' (tests: {})".format(len(data)))
+plt.title("Parallel Hill Climber Learning Curve for '{}' (tests: {})".format(level, len(data)))
 plt.xlabel('Evaluations')
 plt.ylabel('MSE')
 plt.yscale('log')
 plt.legend()
 plt.grid(True)
-plt.savefig('Results_Bronze.txt/HC_Learning_Curve_111872evals.pdf', dpi=300)
+plt.savefig('{}/HC_Learning_Curve_{}evals.pdf'.format(folder, x_largest), dpi=300)
 plt.show()
+
+
+
+#%%
+# LOAD DATA
+level = 'Bronze.txt'
+folder = 'Results_{}'.format(level)
+filename = '{}/RS_date_Oct-21_22-21_5_tests_10000_evals.pkl'.format(folder)
+# Open the file in read-binary mode ('rb') to read the data.
+with open(filename, 'rb') as file:
+    # Use pickle.load() to load the data from the file.
+    data = pickle.load(file)
+
 
 
 #%%
@@ -590,28 +602,30 @@ x_err = []
 y_err = []
 err = []
 for i in range(len(data[0][1])):
-    if i % (len(data[0][1])/10) == 0 and i != 0:
+    if i % 2499 == 0 and i != 0:
+        print(i)
         x_err.append(i)
         y_err.append(y_mean[i])
         err.append(errors[i])
+print(len(err))
 
 # %%
 # PLOT LEARNING CURVE
 plt.figure(figsize=(10, 10))
 plt.plot(x_mean, y_mean, '-', label='RS', color='#3CB371')
 plt.errorbar(x_err, y_err, yerr=err, color='#3CB371', fmt='o', capsize=5, markersize=4)
-plt.title("Random Search Learning Curve for 'Platinum.txt' (tests: {})".format(len(data)))
+plt.title("Random Search Learning Curve for '{}' (tests: {})".format(folder, len(data)))
 plt.xlabel('Evaluations')
 plt.ylabel('MSE')
 plt.yscale('log')
 plt.legend()
 plt.grid(True)
-plt.savefig('Results_Platinum.txt/RS_Learning_Curve_100000evals.pdf', dpi=300)
+plt.savefig('{}/RS_Learning_Curve_{}evals.pdf'.format(folder, len(x_mean)), dpi=300)
 plt.show()
 
 # %%
 # PLOT AGAINST FUNCTION
-true_data = np.loadtxt('Bronze.txt', dtype=float, delimiter=',')
+true_data = np.loadtxt('Silver.txt', dtype=float, delimiter=',')
 
 for i in range(len(data)):
     data[i][0].plot_approximation(target_data=true_data)
