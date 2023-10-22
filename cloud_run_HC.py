@@ -636,7 +636,7 @@ if __name__ == '__main__':
                                             step_search_size=100,
                                             mutate_prcnt_change=.08,
                                             target_data=data,
-                                            max_1100depth=5,
+                                            max_depth=5,
                                             C_range=Y_range,
                                             Optimized_random=100)
         Population[i] = ((best_function, performance_log))
