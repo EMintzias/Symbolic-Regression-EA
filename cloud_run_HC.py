@@ -620,11 +620,12 @@ def save_run(Population, data_name, folder="saved_runs", optional=''):
 
 if __name__ == '__main__':
     # RANDOM SEARCH LEARNING CURVE PLOT
-    level = 'Bronze.txt'
+    level = input("Enter level (Bronze.txt, Silver.txt, Gold.txt): ")
     data = np.loadtxt(level, dtype=float, delimiter=',')
     Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
     iterations = 5
-    evals = 10000
+    evals = input("Enter number of evals (100,000): ")
+    evals = int(evals)
 
     # Runs
     Population = np.full(iterations, None, dtype=object)
@@ -632,9 +633,9 @@ if __name__ == '__main__':
     best_function, performance_log = RSHC(Starts=20,
                                         step_search_size=100,
                                         mutate_prcnt_change=.08,
-                                        target_data=Bronze_data,
-                                        max_depth=3,
-                                        C_range=Y_range_Cu,
+                                        target_data=data,
+                                        max_depth=5,
+                                        C_range=Y_range,
                                         Optimized_random=100)
 
     for i in tqdm(range(iterations), desc='Iterations:', leave=False):
@@ -645,4 +646,4 @@ if __name__ == '__main__':
         Population[i] = ((function, mse_arr))
 
     # Save runs
-    save_run(Population, 'RS', folder='Results_{}'.format(level), optional='{}_tests_{}_evals'.format(iterations, evals))
+    save_run(Population, 'HC', folder='Results_{}'.format(level), optional='{}_tests_{}_evals'.format(iterations, evals))

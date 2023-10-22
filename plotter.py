@@ -505,7 +505,7 @@ class NP_Heap(Function_node):
 
 #%%
 # LOAD DATA
-filename = 'Results_Bronze.txt/RS_date_Oct-21_22-21_5_tests_10000_evals.pkl'
+filename = 'Results_Silver.txt/RS_date_Oct-21_23-37_5_tests_100000_evals.pkl'
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -537,19 +537,27 @@ for i in range(len(data[0][1])):
         y_err.append(y_mean[i])
         err.append(errors[i])
 
-print(len(x_err))
-
 # %%
 # PLOT LEARNING CURVE
 plt.figure(figsize=(10, 10))
 plt.plot(x_mean, y_mean, '-', label='RS', color='#3CB371')
 plt.errorbar(x_err, y_err, yerr=err, color='#3CB371', fmt='o', capsize=5, markersize=4)
-plt.title("Random Search Learning Curve for 'Bronze.txt' (tests: {})".format(len(data)))
+plt.title("Random Search Learning Curve for 'Silver.txt' (tests: {})".format(len(data)))
 plt.xlabel('Evaluations')
 plt.ylabel('MSE')
 plt.yscale('log')
 plt.legend()
 plt.grid(True)
-#plt.savefig('Results_Bronze.txt/RS_Learning_Curve.pdf', dpi=300)
+plt.savefig('Results_Silver.txt/RS_Learning_Curve_100000evals.pdf', dpi=300)
 plt.show()
+
+# %%
+# PLOT AGAINST FUNCTION
+true_data = np.loadtxt('Silver.txt', dtype=float, delimiter=',')
+
+best_i = 0
+best_MSE = 1e20
+for i in range(len(data)):
+    data[i][0].plot_approximation(target_data=true_data)
+
 # %%
