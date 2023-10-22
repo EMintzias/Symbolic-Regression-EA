@@ -503,17 +503,274 @@ class NP_Heap(Function_node):
 
 
 
+
+## **** EVOLUTIONARY ALGOS ***** ##
+# TODO test turnament selection
+# TODO robust crossover (not stress tested)
+# TODO implement better mutation (currently just constants by +_2% (very slow))
+
+
+class Symbolic_Regession_EP(object):
+
+    def __init__(self, pop_size, target_data, tree_depth=4,
+                 const_prob=.35, init_Constant_Range=(-10, 10),
+                 T=.05, cores=3):
+
+        self.target_data = target_data
+        self.T = T
+        self.evaluations = 0
+        self.min_mutation = .1  # mutation hyper parameter
+        self.change_prcnt = .05
+
+        self.eval_log = []
+        self.ith_population_fitnesses = []
+        self.ith_best_function = []
+        self.cores = cores
+        if pop_size % 2:
+            pop_size += 1  # ensure population num is even (now irrelevant)
+        new_population = np.full(pop_size, None, dtype=object)
+        for i in range(pop_size):
+            new_population[i] = NP_Heap(Randomize=True,
+                                        max_depth=tree_depth,
+                                        const_prob=const_prob,
+                                        C_range=init_Constant_Range)
+        self.population = new_population
+        self.Update_pop_fitness()  # initialize fitness
+
+    def __str__(self):
+        def format_array(arr, name):
+            return f"{name}:{np.round(arr[:5],decimals=2)}...{np.round(arr[-5:],decimals=2)}\n"
+
+        output = ""
+        output += format_array(self.MSE_array, "MSE Array")
+        output += format_array(self.fitness_arr, "Fitness Array")
+        output += format_array(self.fitness_ind, "Best Ind_arr")
+        best_ind = self.fitness_ind[0]
+        output += f'\n Best MSE = {round(self.MSE_array[best_ind],3)}, Fitness = {round(self.fitness_arr[best_ind],3)}'
+        return output
+
+    def Parallel_MSE(self):
+        def compute_mse(function):
+            return function.get_MSE(self.target_data, T=self.T)
+        with ThreadPoolExecutor(self.cores) as executor:
+            mse_results = list(executor.map(compute_mse, self.population,
+                                            [self.T] * len(self.population),
+                                            [self.target_data] * len(self.population)))
+            return np.array(mse_results)
+
+    def Update_pop_fitness(self):
+        # T is a measure of selection pressure. The higher T the higher the parents are ranked!
+        self.MSE_array = np.array(
+            [F.get_MSE(self.target_data, T=self.T) for F in self.population])
+        # self.MSE_array = self.Parallel_MSE() #TODO
+        self.fitness_arr = np.exp(-self.T*self.MSE_array) + 1e-6
+        self.fitness_ind = np.argsort(self.fitness_arr)[::-1]
+        self.best_fitness = self.fitness_arr[self.fitness_ind[0]]
+        self.evaluations += self.population.size
+        # return fitness_arr, MSE_array  # Return MSE for printing
+        return None
+
+    def get_similarity(F1, F2):
+        F1_pred = None
+        F2_pred = None
+        distance = np.mean(np.square(F1_pred-F2_pred))
+        return 1/distance
+
+    def fitness_prop_Slection(self, N=2):
+        #fitness_arr, _ = self.Update_pop_fitness(T=T)
+        #fitness_ind = np.argsort(self.fitness_arr)[::-1]
+
+        total_fitness = np.sum(self.fitness_arr)
+        # ensure we are sorted
+        self.fitness_ind = np.argsort(self.fitness_arr)[::-1]
+
+        # hardcoding N= 2 can extend to touple of lenght N and return that.
+        P1_ind, P2_ind = None, None
+        Rand_1 = np.random.uniform(0, total_fitness/N)
+        Rand_2 = Rand_1 + total_fitness/N
+
+        accumulated_fitness = 0
+        for ind in self.fitness_ind:
+            accumulated_fitness += self.fitness_arr[ind]
+            if accumulated_fitness >= Rand_1:
+                if not P1_ind:
+                    P1_ind = ind
+                    continue
+
+                if accumulated_fitness >= Rand_2:
+                    P2_ind = ind
+                    break
+
+        return P1_ind, P2_ind
+
+    def Crossover_and_Mutate(self, P1_ind, P2_ind, at_node=None):
+        P1, P2 = self.population[P1_ind], self.population[P2_ind]
+        # confirm both have parent or choose form a both parent
+        if at_node == None:
+            p1_populated_ind = np.arange(P1.heap.size)[P1.heap != None]
+            p2_populated_ind = np.arange(P2.heap.size)[P2.heap != None]
+            common_ind = np.intersect1d(p1_populated_ind, p2_populated_ind)
+            # TODO ELIMINATE ROOT SWAPS
+            at_node = np.random.choice(common_ind[common_ind != 1])
+
+        p1_subtree_ind, p1_subtree_nodes = P1.subtree(at_node)
+        p2_subtree_ind, p2_subtree_nodes = P2.subtree(at_node)
+
+        # Create two new children
+        Len = max(P1.heap.size, P2.heap.size)
+        C1 = P1.copy(Len)
+        C2 = P2.copy(Len)
+        C1.heap[p2_subtree_ind] = p2_subtree_nodes
+        C2.heap[p1_subtree_ind] = p1_subtree_nodes
+
+        # Mutate the children
+        self.Mutate(C1, C2)
+        # calculate their fitness (need to test this)
+        C1.get_fitness(self.target_data, self.T)
+        C2.get_fitness(self.target_data, self.T)
+        self.evaluations += 2
+
+        # DETERMINISTIC CROWDING:
+        # note we now store y predictions in the function obj to avoid re-evaluation, just np operations!
+        D_P1C1 = self.get_distance(P1, C1)
+        D_P2C2 = self.get_distance(P2, C2)
+        D_P1C2 = self.get_distance(P1, C2)
+        D_P2C1 = self.get_distance(P2, C1)
+        if (D_P1C1 + D_P2C2) < (D_P1C2 + D_P2C1):
+            if C1.fitness > P1.fitness:
+                self.population[P1_ind] = C1
+
+            if C2.fitness > P2.fitness:
+                self.population[P2_ind] = C2
+
+        else:
+            if C1.fitness > P2.fitness:
+                self.population[P2_ind] = C1
+
+            if C2.fitness > P1.fitness:
+                self.population[P1_ind] = C2
+
+        '''
+        # NAIVE REPLACEMENT: Select the best two between parent and new children
+        # TODO Implement discrete diversity maintenance here
+        candidates = np.array([P1, P2, C1, C2])
+        C_fitness = np.array([P1.fitness,
+                              P2.fitness,
+                              C1.fitness,
+                              C2.fitness])
+        best = np.argsort(C_fitness)[::-1]
+
+        # overwrite the two parent indecies with the best population and their fitnesses
+        self.population[P1_ind] = candidates[best[0]]
+        self.fitness_arr[P1_ind] = C_fitness[best[0]]
+        self.population[P2_ind] = candidates[best[1]]
+        self.fitness_arr[P2_ind] = C_fitness[best[1]]
+        '''
+        self.fitness_ind = np.argsort(self.fitness_arr)[::-1]
+        self.best_fitness = self.fitness_arr[self.fitness_ind[0]]
+
+        return None
+
+    def Mutate(self, C1, C2,):
+        C1.Constant_Mutation(change_prcnt=self.change_prcnt,
+                             min_mutation=self.min_mutation)
+        C2.Constant_Mutation(change_prcnt=self.change_prcnt,
+                             min_mutation=self.min_mutation)
+
+    def get_distance(self, F1, F2):
+        return np.sum(np.square(F1.y_pred - F2.y_pred))/F2.y_pred.size
+
+    def plot_diversity(self):
+        data = self.target_data
+        pop_size = self.population.size
+        increment = pop_size // 9
+
+        y_data = [[f.y_pred]
+                  for f in self.population[self.fitness_ind[0:pop_size:increment]]]
+
+        # Create a figure with subplots
+        fig, axes = plt.subplots(3, 3, figsize=(10, 10))
+        labels = [f'{increment*i} th best fucn' for i in range(9)]
+        colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'purple', 'orange']
+        # Plot data in each subplot
+        for i in range(3):
+            for j in range(3):
+                ax = axes[i, j]
+                ax.plot(data[:, 0], y_data[i*3 + j][0],
+                        color=colors[i * 3 + j], label=labels[i * 3 + j])
+                ax.plot(data[:, 0], data[:, 1], label='Target')
+        for ax in axes.flat:
+            ax.legend(loc=2)
+        # Adjust layout and show the plot
+        plt.tight_layout()
+        plt.show()
+
+    def run(self, max_evaluations=1e4, Update_freq=250, min_fitness=.75,
+            min_MSE=.5, Plotting=False, run_cores=None):
+        start_time = time.time()
+        last_time = start_time
+        # technically cheating: we call in init. self.evaluations = 0
+        Best_MSE = self.population[self.fitness_ind[0]].MSE
+        count, log_insance, last_evls = 0, 0, 0
+
+        cores = run_cores if run_cores else self.cores
+        print('num_cores:', cores)
+        self.barrier = threading.Barrier(cores)
+        with ThreadPoolExecutor(max_workers=cores) as executor:
+            while Best_MSE > min_MSE and not self.evaluations > max_evaluations:
+                # TODO update fitness based on some T criteria
+                P1_ind, P2_ind = self.fitness_prop_Slection()
+                self.Crossover_and_Mutate(P1_ind, P2_ind)
+
+                # the above replaces in population and writes to the fitness array so we have to resor
+                Best_MSE = self.population[self.fitness_ind[0]].MSE
+
+                # if logging frequency
+                if self.evaluations // Update_freq >= count:
+
+                    # TODO only call this with temperature updates.
+                    # self.Update_pop_fitness()
+                    # self.barrier.wait() #lets get on the same page so we dont plot 30 times
+                    log_insance += 1
+
+                    count = self.evaluations // Update_freq + 1
+                    best_function = self.population[self.fitness_ind[0]]
+
+                    self.eval_log.append(self.evaluations)
+                    self.ith_population_fitnesses.append(self.fitness_arr)
+                    self.ith_best_function.append(best_function)
+
+                    # PRINT:
+                    elapsed = (time.time()-last_time)/60
+                    msg_out = ''
+                    msg_out += f'Log #{log_insance} | Best_MSE = {Best_MSE:.5f} | '
+                    msg_out += f' spped:{round((self.evaluations-last_evls)/elapsed,2)} eval/min'
+                    msg_out += f" | Time:{round((time.time()- start_time)/60,1)}mins. | Progress {round(self.evaluations/max_evaluations,1)}"+'%'
+
+                    print(msg_out)
+                    last_evls = self.evaluations
+                    last_time = time.time()
+
+                    if Plotting or log_insance % 10 == 1:
+                        # best_function.plot_approximation(target_data=data,data_name='log #'+str(log_insance))
+                        self.plot_diversity()
+
+        print(f'Exiting with best mse: {Best_MSE:.3f}')
+        return None
+
+
+
 #%%
 # LOAD DATA
 level = 'Bronze.txt'
 folder = 'Results_{}'.format(level)
-filename = '{}/RS_date_Oct-22_16-04_5_tests_100000_evals.pkl'.format(folder)
+filename = '{}/GP_date_Oct-22_18-41_10_popsize_5_tests_10_evals.pkl'.format(folder)
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
     data = pickle.load(file)
 
-
+print(data)
 
 #%%
 # PREPARE DATA
