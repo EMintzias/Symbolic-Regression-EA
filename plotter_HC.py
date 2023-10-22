@@ -505,25 +505,23 @@ class NP_Heap(Function_node):
 
 #%%
 # LOAD DATA
-level = 'Bronze.txt'
+level = 'Platinum.txt'
 folder = 'Results_{}'.format(level)
-filename = '{}/HC_date_Oct-22_06-27_5_tests_128_evals.pkl'.format(folder)   #'Results_Silver.txt/HC_date_Oct-22_07-34_5_tests_128_evals.pkl'
+filename = '{}/HC_date_Oct-22_08-56_5_tests_128_evals.pkl'.format(folder)
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
     data = pickle.load(file)
 
 #%%
-
+# PREPARE DATA
 # find largest x in data
 x_largest = 0
 for i in data:
     if i[1][-1][0] > x_largest:
         x_largest = i[1][-1][0]
-
 print(x_largest)
-#%%
-# PREPARE DATA
+
 x_arr = np.full((len(data), x_largest), None, dtype=float)
 y_arr = np.full((len(data), x_largest), None, dtype=float)
 
@@ -550,6 +548,7 @@ y_err = []
 err = []
 for i in range(len(x_arr[0])):
     if i % 25000 == 0 and i != 0:
+        print(i)
         x_err.append(i)
         y_err.append(y_mean[i])
         err.append(errors[i])
@@ -558,8 +557,8 @@ print(len(err))
 # %%
 # PLOT LEARNING CURVE
 plt.figure(figsize=(10, 10))
-plt.plot(x_mean, y_mean, '-', label='HC', color='#3CB371')
-plt.errorbar(x_err, y_err, yerr=err, color='#3CB371', fmt='o', capsize=5, markersize=4)
+plt.plot(x_mean, y_mean, '-', label='HC', color='darkorange')
+plt.errorbar(x_err, y_err, yerr=err, color='darkorange', fmt='o', capsize=5, markersize=4)
 plt.title("Parallel Hill Climber Learning Curve for '{}' (tests: {})".format(level, len(data)))
 plt.xlabel('Evaluations')
 plt.ylabel('MSE')

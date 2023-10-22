@@ -622,13 +622,13 @@ def save_run(Population, data_name, folder="saved_runs", optional=''):
 
 if __name__ == '__main__':
     # PARALLEL HC LEARNING CURVE PLOT
-    files = ['Silver.txt', 'Gold.txt', 'Platinum.txt']
+    files = ['Gold.txt', 'Platinum.txt']
     for i in tqdm(range(len(files)), desc='Files:', leave=False):
         level = files[i] #input("Enter level (Bronze.txt, Silver.txt, Gold.txt): ")
         data = np.loadtxt(level, dtype=float, delimiter=',')
         Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
         iterations = 5
-        evals = 128 #input("Enter number of starts (100): ")
+        evals = 180 #input("Enter number of starts (100): ")
         evals = int(evals)
 
         # Runs

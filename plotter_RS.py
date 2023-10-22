@@ -505,9 +505,9 @@ class NP_Heap(Function_node):
 
 #%%
 # LOAD DATA
-level = 'Bronze.txt'
+level = 'Platinum.txt'
 folder = 'Results_{}'.format(level)
-filename = '{}/RS_date_Oct-21_22-21_5_tests_10000_evals.pkl'.format(folder)
+filename = '{}/RS_date_Oct-22_04-45_5_tests_100000_evals.pkl'.format(folder)
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -534,7 +534,7 @@ x_err = []
 y_err = []
 err = []
 for i in range(len(data[0][1])):
-    if i % 2499 == 0 and i != 0:
+    if (i % 25000 == 0 and i != 0) or i == 99999:
         print(i)
         x_err.append(i)
         y_err.append(y_mean[i])
@@ -577,7 +577,7 @@ for j in range(len(data)):
     fig.subplots_adjust(right=0.7)
     # PLOT Best Solution vs True Data
     ax.plot(true_data.T[0], true_data.T[1], '-', label=level, color='black')
-    ax.plot(x_plot, y_plot, '-', label='HC Solution', color='#3CB371')
+    ax.plot(x_plot, y_plot, '-', label='RS Solution', color='#3CB371')
     ax.set_title("Random Search Solution for '{}' (test #{})".format(level, j))
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
