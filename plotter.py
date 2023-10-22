@@ -561,3 +561,77 @@ for i in range(len(data)):
     data[i][0].plot_approximation(target_data=true_data)
 
 # %%
+
+def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
+       const_prob=.5, C_range=(-10, 10), given_function=None, Optimized_random=0):
+    '''
+    This function will search random children and move in the best direction from an optimized random start. 
+
+    '''
+    if not given_function:
+        # initialize return functions
+        if Optimized_random:  # does a quick random search to eliminate the trash
+            # TODO diversity issue this should be deliberately implemented at the random function level
+            Best_Function, _ = Random_Search(evaluations=Optimized_random,
+                                             data=target_data,
+                                             max_depth=max_depth,
+                                             C_range=C_range)
+        else:
+            Best_Function = NP_Heap(length=32)
+            Best_Function.Random_Heap(max_depth=max_depth,
+                                      const_prob=const_prob,
+                                      C_range=C_range)
+    else:
+        Best_Function = given_function
+
+    Min_MSE = Best_Function.get_MSE(target_data)
+    MSE_log = []
+    Improved = True
+    step_num = 0
+    while Improved:
+        print(step_num)
+        Improved = False  # to be flagged true if any of the children is better than the parent
+        # parent of all children to search steps based on the curent best
+        gen_parent = Best_Function.copy()
+        for _ in range(step_search_size):
+            # loops N times testing nearby points
+            step = gen_parent.copy()
+            step.Constant_Mutation(change_prcnt=mutate_prcnt_change)
+            step_MSE = step.get_MSE(target_data)
+            if step_MSE < Min_MSE:
+                # this will track best step at a position.
+                Best_Function = step
+                Min_MSE = step_MSE
+                Improved = True  # only needs to happen once to be overritedn
+        step_num += 1
+        MSE_log.append([step_num*step_search_size, Min_MSE])
+
+        #print('loop ', step_num, ' DONE')
+        #print('Best child \n',Best_Function)
+        #print('min MSE', Min_MSE)
+
+    return Best_Function, MSE_log
+
+
+# %%
+
+step_search_size=128
+max_depth=3
+mutate_prcnt_change=.02
+const_prob=.5
+C_range=(-10, 10)
+Optimized_random=0
+
+function, mse_arr = HC(step_search_size=step_search_size,
+                               target_data=true_data,
+                               mutate_prcnt_change=mutate_prcnt_change,
+                               max_depth=max_depth,
+                               const_prob=const_prob,
+                               C_range=C_range,
+                               given_function=data[0][0],
+                               Optimized_random=Optimized_random)
+
+# %%
+function.plot_approximation(target_data=true_data)
+print(function.MSE)
+# %%
