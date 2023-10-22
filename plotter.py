@@ -505,7 +505,7 @@ class NP_Heap(Function_node):
 
 #%%
 # LOAD DATA
-filename = 'Results_Silver.txt/RS_date_Oct-21_23-37_5_tests_100000_evals.pkl'
+filename = 'Results_Gold.txt/RS_date_Oct-22_04-09_5_tests_100000_evals.pkl'
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -542,22 +542,95 @@ for i in range(len(data[0][1])):
 plt.figure(figsize=(10, 10))
 plt.plot(x_mean, y_mean, '-', label='RS', color='#3CB371')
 plt.errorbar(x_err, y_err, yerr=err, color='#3CB371', fmt='o', capsize=5, markersize=4)
-plt.title("Random Search Learning Curve for 'Silver.txt' (tests: {})".format(len(data)))
+plt.title("Random Search Learning Curve for 'Gold.txt' (tests: {})".format(len(data)))
 plt.xlabel('Evaluations')
 plt.ylabel('MSE')
 plt.yscale('log')
 plt.legend()
 plt.grid(True)
-plt.savefig('Results_Silver.txt/RS_Learning_Curve_100000evals.pdf', dpi=300)
+plt.savefig('Results_Gold.txt/RS_Learning_Curve_100000evals.pdf', dpi=300)
 plt.show()
 
 # %%
 # PLOT AGAINST FUNCTION
-true_data = np.loadtxt('Silver.txt', dtype=float, delimiter=',')
+true_data = np.loadtxt('Gold.txt', dtype=float, delimiter=',')
 
-best_i = 0
-best_MSE = 1e20
 for i in range(len(data)):
     data[i][0].plot_approximation(target_data=true_data)
+    print(data[i][0].MSE)
 
+# %%
+
+def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
+       const_prob=.5, C_range=(-10, 10), given_function=None, Optimized_random=0):
+    '''
+    This function will search random children and move in the best direction from an optimized random start. 
+
+    '''
+    if not given_function:
+        # initialize return functions
+        if Optimized_random:  # does a quick random search to eliminate the trash
+            # TODO diversity issue this should be deliberately implemented at the random function level
+            Best_Function, _ = Random_Search(evaluations=Optimized_random,
+                                             data=target_data,
+                                             max_depth=max_depth,
+                                             C_range=C_range)
+        else:
+            Best_Function = NP_Heap(length=32)
+            Best_Function.Random_Heap(max_depth=max_depth,
+                                      const_prob=const_prob,
+                                      C_range=C_range)
+    else:
+        Best_Function = given_function
+
+    Min_MSE = Best_Function.get_MSE(target_data)
+    MSE_log = []
+    Improved = True
+    step_num = 0
+    while Improved:
+        print(step_num)
+        Improved = False  # to be flagged true if any of the children is better than the parent
+        # parent of all children to search steps based on the curent best
+        gen_parent = Best_Function.copy()
+        for _ in range(step_search_size):
+            # loops N times testing nearby points
+            step = gen_parent.copy()
+            step.Constant_Mutation(change_prcnt=mutate_prcnt_change)
+            step_MSE = step.get_MSE(target_data)
+            if step_MSE < Min_MSE:
+                # this will track best step at a position.
+                Best_Function = step
+                Min_MSE = step_MSE
+                Improved = True  # only needs to happen once to be overritedn
+        step_num += 1
+        MSE_log.append([step_num*step_search_size, Min_MSE])
+
+        #print('loop ', step_num, ' DONE')
+        #print('Best child \n',Best_Function)
+        #print('min MSE', Min_MSE)
+
+    return Best_Function, MSE_log
+
+
+# %%
+
+step_search_size=128
+max_depth=3
+mutate_prcnt_change=.02
+const_prob=.5
+C_range=(-10, 10)
+Optimized_random=0
+
+function, mse_arr = HC(step_search_size=step_search_size,
+                               target_data=true_data,
+                               mutate_prcnt_change=mutate_prcnt_change,
+                               max_depth=max_depth,
+                               const_prob=const_prob,
+                               C_range=C_range,
+                               given_function=data[2][0],
+                               Optimized_random=Optimized_random)
+
+# %%
+function.plot_approximation(target_data=true_data)
+print(function.MSE)
 # %%
