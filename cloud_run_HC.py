@@ -549,13 +549,14 @@ def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
 
     Min_MSE = Best_Function.get_MSE(target_data)
     MSE_log = []
+    MSE_log.append([Optimized_random if Optimized_random>0 else 1, Min_MSE])
     Improved = True
     step_num = 0
     while Improved:
         Improved = False  # to be flagged true if any of the children is better than the parent
         # parent of all children to search steps based on the curent best
         gen_parent = Best_Function.copy()
-        for _ in range(step_search_size):
+        for _ in tqdm(range(step_search_size), desc='Stepping:', leave=False):
             # loops N times testing nearby points
             step = gen_parent.copy()
             step.Constant_Mutation(change_prcnt=mutate_prcnt_change)
@@ -634,7 +635,7 @@ if __name__ == '__main__':
                                             step_search_size=100,
                                             mutate_prcnt_change=.08,
                                             target_data=data,
-                                            max_depth=5,
+                                            max_1100depth=5,
                                             C_range=Y_range,
                                             Optimized_random=100)
         Population[i] = ((best_function, performance_log))
