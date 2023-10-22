@@ -623,14 +623,14 @@ if __name__ == '__main__':
     level = input("Enter level (Bronze.txt, Silver.txt, Gold.txt): ")
     data = np.loadtxt(level, dtype=float, delimiter=',')
     Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
-    iterations = 1
-    evals = input("Enter number of evals (100,000): ")
+    iterations = 5
+    evals = input("Enter number of starts (100): ")
     evals = int(evals)
 
     # Runs
     Population = np.full(iterations, None, dtype=object)
     for i in tqdm(range(iterations), desc='Iterations:', leave=False):
-        best_function, performance_log = RSHC(Starts=20,
+        best_function, performance_log = RSHC(Starts=evals,
                                             step_search_size=100,
                                             mutate_prcnt_change=.08,
                                             target_data=data,
