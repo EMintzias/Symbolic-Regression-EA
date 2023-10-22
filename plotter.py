@@ -505,7 +505,7 @@ class NP_Heap(Function_node):
 
 #%%
 # LOAD DATA
-filename = 'Results_Gold.txt/RS_date_Oct-22_04-09_5_tests_100000_evals.pkl'
+filename = 'Results_Platinum.txt/RS_date_Oct-22_04-45_5_tests_100000_evals.pkl'
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -542,18 +542,18 @@ for i in range(len(data[0][1])):
 plt.figure(figsize=(10, 10))
 plt.plot(x_mean, y_mean, '-', label='RS', color='#3CB371')
 plt.errorbar(x_err, y_err, yerr=err, color='#3CB371', fmt='o', capsize=5, markersize=4)
-plt.title("Random Search Learning Curve for 'Gold.txt' (tests: {})".format(len(data)))
+plt.title("Random Search Learning Curve for 'Platinum.txt' (tests: {})".format(len(data)))
 plt.xlabel('Evaluations')
 plt.ylabel('MSE')
 plt.yscale('log')
 plt.legend()
 plt.grid(True)
-plt.savefig('Results_Gold.txt/RS_Learning_Curve_100000evals.pdf', dpi=300)
+plt.savefig('Results_Platinum.txt/RS_Learning_Curve_100000evals.pdf', dpi=300)
 plt.show()
 
 # %%
 # PLOT AGAINST FUNCTION
-true_data = np.loadtxt('Gold.txt', dtype=float, delimiter=',')
+true_data = np.loadtxt('Platinum.txt', dtype=float, delimiter=',')
 
 for i in range(len(data)):
     data[i][0].plot_approximation(target_data=true_data)
