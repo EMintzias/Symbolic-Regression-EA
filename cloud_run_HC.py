@@ -533,7 +533,7 @@ def HC(target_data, step_search_size=128, max_depth=3, mutate_prcnt_change=.01,
     '''
     if not given_function:
         # initialize return functions
-        if Optimized_random:  # does a quick random search to eliminate the trash
+        if Optimized_random>0:  # does a quick random search to eliminate the trash
             # TODO diversity issue this should be deliberately implemented at the random function level
             Best_Function, _ = Random_Search(evaluations=Optimized_random,
                                              data=target_data,
@@ -619,31 +619,25 @@ def save_run(Population, data_name, folder="saved_runs", optional=''):
 
 
 if __name__ == '__main__':
-    # RANDOM SEARCH LEARNING CURVE PLOT
+    # PARALLEL HC LEARNING CURVE PLOT
     level = input("Enter level (Bronze.txt, Silver.txt, Gold.txt): ")
     data = np.loadtxt(level, dtype=float, delimiter=',')
     Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
-    iterations = 5
+    iterations = 1
     evals = input("Enter number of evals (100,000): ")
     evals = int(evals)
 
     # Runs
     Population = np.full(iterations, None, dtype=object)
-
-    best_function, performance_log = RSHC(Starts=20,
-                                        step_search_size=100,
-                                        mutate_prcnt_change=.08,
-                                        target_data=data,
-                                        max_depth=5,
-                                        C_range=Y_range,
-                                        Optimized_random=100)
-
     for i in tqdm(range(iterations), desc='Iterations:', leave=False):
-        function, mse_arr = Random_Search(evals,
-                                    data=data,
-                                    max_depth=5,
-                                    C_range=Y_range)
-        Population[i] = ((function, mse_arr))
+        best_function, performance_log = RSHC(Starts=20,
+                                            step_search_size=100,
+                                            mutate_prcnt_change=.08,
+                                            target_data=data,
+                                            max_depth=5,
+                                            C_range=Y_range,
+                                            Optimized_random=100)
+        Population[i] = ((best_function, performance_log))
 
     # Save runs
     save_run(Population, 'HC', folder='Results_{}'.format(level), optional='{}_tests_{}_evals'.format(iterations, evals))

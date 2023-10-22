@@ -505,7 +505,7 @@ class NP_Heap(Function_node):
 
 #%%
 # LOAD DATA
-filename = 'Results_Silver.txt/RS_date_Oct-21_23-37_5_tests_100000_evals.pkl'
+filename = 'Results_Gold.txt/RS_date_Oct-22_04-09_5_tests_100000_evals.pkl'
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -542,23 +542,22 @@ for i in range(len(data[0][1])):
 plt.figure(figsize=(10, 10))
 plt.plot(x_mean, y_mean, '-', label='RS', color='#3CB371')
 plt.errorbar(x_err, y_err, yerr=err, color='#3CB371', fmt='o', capsize=5, markersize=4)
-plt.title("Random Search Learning Curve for 'Silver.txt' (tests: {})".format(len(data)))
+plt.title("Random Search Learning Curve for 'Gold.txt' (tests: {})".format(len(data)))
 plt.xlabel('Evaluations')
 plt.ylabel('MSE')
 plt.yscale('log')
 plt.legend()
 plt.grid(True)
-plt.savefig('Results_Silver.txt/RS_Learning_Curve_100000evals.pdf', dpi=300)
+plt.savefig('Results_Gold.txt/RS_Learning_Curve_100000evals.pdf', dpi=300)
 plt.show()
 
 # %%
 # PLOT AGAINST FUNCTION
-true_data = np.loadtxt('Silver.txt', dtype=float, delimiter=',')
+true_data = np.loadtxt('Gold.txt', dtype=float, delimiter=',')
 
-best_i = 0
-best_MSE = 1e20
 for i in range(len(data)):
     data[i][0].plot_approximation(target_data=true_data)
+    print(data[i][0].MSE)
 
 # %%
 
@@ -628,7 +627,7 @@ function, mse_arr = HC(step_search_size=step_search_size,
                                max_depth=max_depth,
                                const_prob=const_prob,
                                C_range=C_range,
-                               given_function=data[0][0],
+                               given_function=data[2][0],
                                Optimized_random=Optimized_random)
 
 # %%
