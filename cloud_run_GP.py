@@ -780,7 +780,7 @@ if __name__ == '__main__':
     level = input("Enter level (Bronze.txt, Silver.txt, Gold.txt, Platinum.txt): ")
     data = np.loadtxt(level, dtype=float, delimiter=',')
     Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
-    iterations = 5
+    iterations = 1
     pop_size = input("Enter population size (3,000): ")
     pop_size = int(pop_size)
     evals = input("Enter number of evals (100,000): ")
