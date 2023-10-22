@@ -584,7 +584,7 @@ def RSHC(Starts, target_data, step_search_size=128, max_depth=3, mutate_prcnt_ch
     total_evals = 0
     Best_MSE = 1e7
     best_function = None
-    for i in tqdm(range(Starts), desc='RSHC:'):
+    for i in tqdm(range(Starts), desc='RSHC:', leave=False):
         function, mse_arr = HC(step_search_size=step_search_size,
                                target_data=target_data,
                                mutate_prcnt_change=mutate_prcnt_change,
