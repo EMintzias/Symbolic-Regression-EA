@@ -790,7 +790,7 @@ if __name__ == '__main__':
     # We want to output eval_log, ith_best_function, ith_population_fitnesses
     Populations = np.full(iterations, None, dtype=object)
     for i in tqdm(range(iterations), desc='Iterations:', leave=False):
-        Population = Symbolic_Regession_EP(pop_size=pop_size, target_data=data, T=.1, cores=4)
+        Population = Symbolic_Regession_EP(pop_size=pop_size, target_data=data, T=.2, cores=4)
         Population.run(min_MSE=.00001, Update_freq=100, max_evaluations=evals, Plotting=False)
         Populations[i] = (Population.eval_log, Population.ith_best_function, Population.ith_population_fitnesses)
     # Save runs
