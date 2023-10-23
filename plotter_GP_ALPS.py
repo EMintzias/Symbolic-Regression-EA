@@ -505,9 +505,9 @@ class NP_Heap(Function_node):
 
 #%%
 # LOAD DATA
-level = 'Bronze.txt'
+level = 'Silver.txt'
 folder = 'Results_{}'.format(level)
-filename = '{}/RS_date_Oct-22_16-04_5_tests_100000_evals.pkl'.format(folder)
+filename = '{}/GP_date_Oct-23_01-10_3000_popsize_5_tests_100000_evals_DC_HP.pkl'.format(folder)
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -515,17 +515,34 @@ with open(filename, 'rb') as file:
 
 
 
+
 #%%
 # PREPARE DATA
+# rearrange the x_arr etc to fill in 100,000 evals & restructure it in the same way we did the HC
 
-x_arr = np.full((len(data),len(data[0][1])), None, dtype=float)
-y_arr = np.full((len(data),len(data[0][1])), None, dtype=float)
+x_arr = np.full((len(data), data[0][0][-1]), None, dtype=float)
+y_arr = np.full((len(data), data[0][0][-1]), None, dtype=float)
 
 for i in range(len(data)):
-    for j in range(len(data[0][1])):
+    x_start = 0
+    y_min = 1e4
+    x_max = len(data[i][1])-1
+    for j in range(data[0][0][-1]):
         x_arr[i][j] = j
-        y_arr[i][j] = data[i][1][j][1]
+        if j == data[i][0][x_start]:
+            y_min = data[i][1][x_start].MSE
+            if x_start < x_max:
+                x_start += 1
+        y_arr[i][j] = y_min
 
+print(x_arr)
+print(y_arr)
+
+
+
+
+#%%
+# MEANS
 x_mean = np.mean(np.array(x_arr), axis=0)
 y_mean = np.mean(np.array(y_arr),axis=0)
 
@@ -533,7 +550,7 @@ errors = np.std(np.array(y_arr), axis=0) / np.sqrt(np.array(y_arr).shape[0])
 x_err = []
 y_err = []
 err = []
-for i in range(len(data[0][1])):
+for i in range(data[0][0][-1]):
     if (i % 25000 == 0 and i != 0) or i == 99999:
         print(i)
         x_err.append(i)
@@ -541,44 +558,48 @@ for i in range(len(data[0][1])):
         err.append(errors[i])
 print(len(err))
 
+
+
 # %%
 # PLOT LEARNING CURVE
 plt.figure(figsize=(10, 10))
-plt.plot(x_mean, y_mean, '-', label='GP ALPS', color='#993CB3')
+plt.plot(x_mean, y_mean, '-', label='GP DC HP', color='#993CB3')
 plt.errorbar(x_err, y_err, yerr=err, color='#993CB3', fmt='o', capsize=5, markersize=4)
-plt.title("GP Age-Layered Population Structure Learning Curve for '{}' (tests: {})".format(folder, len(data)))
+plt.title("GP Deterministic Crowding High Pressure Learning Curve for '{}' (tests: {})".format(folder, len(data)))
 plt.xlabel('Evaluations')
 plt.ylabel('MSE')
 plt.yscale('log')
 plt.legend()
 plt.grid(True)
-plt.savefig('{}/GP_ALPS_Learning_Curve_{}evals.pdf'.format(folder, len(x_mean)), dpi=300)
+plt.savefig('{}/GP_DCHP_Learning_Curve_{}evals.pdf'.format(folder, len(x_mean)), dpi=300)
 plt.show()
 
 
 
 # %%
 # PLOT AGAINST FUNCTION
+# for nicest plot of each iter we need to plot the last of the best heaps (data[0][1][-1].plot I think)
+
 true_data = np.loadtxt(level, dtype=float, delimiter=',')
 
 for j in range(len(data)):
     x_plot = np.full(len(true_data.T[0]), None, dtype=float)
     y_plot = np.full(len(true_data.T[0]), None, dtype=float)
 
-    tree = data[j][0]
-    MSE = round(data[j][0].MSE, 8)
+    tree = data[j][1][-1]
+    MSE = round(data[j][1][-1].MSE, 8)
     figure_text = f"Heap:\n\n{tree}\n\n\nMSE:\n\n{MSE}"
 
     for i, x in enumerate(true_data.T[0]):
         x_plot[i] = x
-        y_plot[i] = data[j][0].evaluate(X=x)
+        y_plot[i] = tree.evaluate(X=x)
 
     fig, ax = plt.subplots(figsize=(13.7, 10))
     fig.subplots_adjust(right=0.7)
     # PLOT Best Solution vs True Data
     ax.plot(true_data.T[0], true_data.T[1], '-', label=level, color='black')
-    ax.plot(x_plot, y_plot, '-', label='GP ALPS Solution', color='#993CB3')
-    ax.set_title("GP Age-Layered Population Structure Solution for '{}' (test #{})".format(level, j))
+    ax.plot(x_plot, y_plot, '-', label='GP DC HP Solution', color='#993CB3')
+    ax.set_title("GP DC HP Solution for '{}' (test #{})".format(level, j))
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.legend()
@@ -587,6 +608,7 @@ for j in range(len(data)):
     folder_path = '{}/Subplots'.format(folder)
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
-    fig.savefig('{}/GP_ALPS_Solution_test#{}.pdf'.format(folder_path, j), dpi=300)
+    fig.savefig('{}/GP_DC_HP_Solution_test#{}.pdf'.format(folder_path, j), dpi=300)
     plt.show()
 
+# %%

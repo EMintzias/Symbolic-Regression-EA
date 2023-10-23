@@ -766,6 +766,7 @@ folder = 'Results_{}'.format(level)
 rs_filename = '{}/RS_date_Oct-21_23-37_5_tests_100000_evals.pkl'.format(folder)
 hc_filename = '{}/HC_date_Oct-22_07-34_5_tests_128_evals.pkl'.format(folder)
 gp_filename = '{}/GP_date_Oct-23_00-59_3000_popsize_5_tests_100000_evals_Conventional_t_0.05.pkl'.format(folder)
+gp_dc_filename = '{}/GP_date_Oct-23_01-10_3000_popsize_5_tests_100000_evals_DC_HP.pkl'.format(folder)
 # Open the file in read-binary mode ('rb') to read the data.
 with open(rs_filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -778,6 +779,10 @@ with open(hc_filename, 'rb') as file:
 with open(gp_filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
     gp_data = pickle.load(file)
+
+with open(gp_dc_filename, 'rb') as file:
+    # Use pickle.load() to load the data from the file.
+    gp_dc_data = pickle.load(file)
 
 
 
@@ -887,6 +892,44 @@ print(len(gp_err))
 
 print(len(gp_x_mean))
 
+
+#%%
+# GP DC DATA
+gp_dc_x_arr = np.full((len(gp_dc_data), gp_dc_data[0][0][-1]), None, dtype=float)
+gp_dc_y_arr = np.full((len(gp_dc_data), gp_dc_data[0][0][-1]), None, dtype=float)
+
+for i in range(len(gp_dc_data)):
+    x_start = 0
+    y_min = 1e4
+    x_max = len(gp_dc_data[i][1])-1
+    for j in range(gp_dc_data[0][0][-1]):
+        gp_dc_x_arr[i][j] = j
+        if j == gp_dc_data[i][0][x_start]:
+            y_min = gp_dc_data[i][1][x_start].MSE
+            if x_start < x_max:
+                x_start += 1
+        gp_dc_y_arr[i][j] = y_min
+    print(gp_dc_y_arr[i][-1])
+
+
+# MEANS
+gp_dc_x_mean = np.mean(np.array(gp_dc_x_arr), axis=0)
+gp_dc_y_mean = np.mean(np.array(gp_dc_y_arr),axis=0)
+
+gp_dc_errors = np.std(np.array(gp_dc_y_arr), axis=0) / np.sqrt(np.array(gp_dc_y_arr).shape[0])
+gp_dc_x_err = []
+gp_dc_y_err = []
+gp_dc_err = []
+for i in range(gp_dc_data[0][0][-1]):
+    if (i % 25000 == 0 and i != 0) or i == 99999:
+        print(i)
+        gp_dc_x_err.append(i)
+        gp_dc_y_err.append(gp_dc_y_mean[i])
+        gp_dc_err.append(gp_dc_errors[i])
+print(len(gp_dc_err))
+
+print(len(gp_dc_x_mean))
+
 # %%
 # PLOT LEARNING CURVE
 plt.figure(figsize=(10, 10))
@@ -896,6 +939,8 @@ plt.plot(hc_x_mean, hc_y_mean, '-', label='HC', color='darkorange')
 plt.errorbar(hc_x_err, hc_y_err, yerr=hc_err, color='darkorange', fmt='o', capsize=5, markersize=4)
 plt.plot(gp_x_mean, gp_y_mean, '-', label='GP Conventional', color='#3C7BB3')
 plt.errorbar(gp_x_err, gp_y_err, yerr=gp_err, color='#3C7BB3', fmt='o', capsize=5, markersize=4)
+plt.plot(gp_dc_x_mean, gp_dc_y_mean, '-', label='GP DC HP', color='#993CB3')
+plt.errorbar(gp_dc_x_err, gp_dc_y_err, yerr=gp_dc_err, color='#993CB3', fmt='o', capsize=5, markersize=4)
 plt.title("Learning Curves for '{}' (tests: 5)".format(level))
 plt.xlabel('Evaluations')
 plt.ylabel('MSE')
