@@ -762,9 +762,9 @@ class Symbolic_Regession_EP(object):
 
 #%%
 # LOAD DATA
-level = 'Silver.txt'
+level = 'Bronze.txt'
 folder = 'Results_{}'.format(level)
-filename = '{}/GP_date_Oct-22_20-24_3000_popsize_5_tests_100000_evals.pkl'.format(folder)
+filename = '{}/GP_date_Oct-22_19-26_3000_popsize_5_tests_100000_evals.pkl'.format(folder)
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
