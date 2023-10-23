@@ -762,9 +762,9 @@ class Symbolic_Regession_EP(object):
 
 #%%
 # LOAD DATA
-level = 'Bronze.txt'
+level = 'Silver.txt'
 folder = 'Results_{}'.format(level)
-filename = '{}/GP_date_Oct-22_19-26_3000_popsize_5_tests_100000_evals.pkl'.format(folder)
+filename = '{}/GP_date_Oct-23_00-59_3000_popsize_5_tests_100000_evals_Conventional_t_0.05.pkl'.format(folder)
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -818,15 +818,15 @@ print(len(err))
 # %%
 # PLOT LEARNING CURVE
 plt.figure(figsize=(10, 10))
-plt.plot(x_mean, y_mean, '-', label='GP', color='#3C7BB3')
+plt.plot(x_mean, y_mean, '-', label='GP Conventional', color='#3C7BB3')
 plt.errorbar(x_err, y_err, yerr=err, color='#3C7BB3', fmt='o', capsize=5, markersize=4)
-plt.title("Genetic Programming Learning Curve for '{}' (tests: {})".format(folder, len(data)))
+plt.title("GP Conventional Learning Curve for '{}' (tests: {})".format(folder, len(data)))
 plt.xlabel('Evaluations')
 plt.ylabel('MSE')
 plt.yscale('log')
 plt.legend()
 plt.grid(True)
-plt.savefig('{}/GP_Learning_Curve_{}evals.pdf'.format(folder, len(x_mean)), dpi=300)
+plt.savefig('{}/GP_Conventional_Learning_Curve_{}evals.pdf'.format(folder, len(x_mean)), dpi=300)
 plt.show()
 
 
@@ -844,12 +844,9 @@ for i in range(len(y)):
     for j in range(len(y[i])):
         y_mses[i][j] = np.log(y[i][j])/(-0.05)
 
-
-#%%
 print(y)
 print(y_mses)
 
-#%%
 plt.figure(figsize=(10, 10))
 for i in range(len(x)):
     plt.scatter(np.full(len(y[i]), x[i]), y_mses[i], color='black', s=0.01)
@@ -889,7 +886,7 @@ for j in range(len(data)):
     # PLOT Best Solution vs True Data
     ax.plot(true_data.T[0], true_data.T[1], '-', label=level, color='black')
     ax.plot(x_plot, y_plot, '-', label='GP Solution', color='#3C7BB3')
-    ax.set_title("Genetic Programming Solution for '{}' (test #{})".format(level, j))
+    ax.set_title("GP Conventional Solution for '{}' (test #{})".format(level, j))
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.legend()
@@ -898,7 +895,7 @@ for j in range(len(data)):
     folder_path = '{}/Subplots'.format(folder)
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
-    fig.savefig('{}/GP_Solution_test#{}.pdf'.format(folder_path, j), dpi=300)
+    fig.savefig('{}/GP_Conventional_Solution_test#{}.pdf'.format(folder_path, j), dpi=300)
     plt.show()
 
 

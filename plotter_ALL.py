@@ -765,7 +765,7 @@ level = 'Silver.txt'
 folder = 'Results_{}'.format(level)
 rs_filename = '{}/RS_date_Oct-21_23-37_5_tests_100000_evals.pkl'.format(folder)
 hc_filename = '{}/HC_date_Oct-22_07-34_5_tests_128_evals.pkl'.format(folder)
-gp_filename = '{}/GP_date_Oct-22_20-24_3000_popsize_5_tests_100000_evals.pkl'.format(folder)
+gp_filename = '{}/GP_date_Oct-23_00-59_3000_popsize_5_tests_100000_evals_Conventional_t_0.05.pkl'.format(folder)
 # Open the file in read-binary mode ('rb') to read the data.
 with open(rs_filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -894,7 +894,7 @@ plt.plot(rs_x_mean, rs_y_mean, '-', label='RS', color='#3CB371')
 plt.errorbar(rs_x_err, rs_y_err, yerr=rs_err, color='#3CB371', fmt='o', capsize=5, markersize=4)
 plt.plot(hc_x_mean, hc_y_mean, '-', label='HC', color='darkorange')
 plt.errorbar(hc_x_err, hc_y_err, yerr=hc_err, color='darkorange', fmt='o', capsize=5, markersize=4)
-plt.plot(gp_x_mean, gp_y_mean, '-', label='GP', color='#3C7BB3')
+plt.plot(gp_x_mean, gp_y_mean, '-', label='GP Conventional', color='#3C7BB3')
 plt.errorbar(gp_x_err, gp_y_err, yerr=gp_err, color='#3C7BB3', fmt='o', capsize=5, markersize=4)
 plt.title("Learning Curves for '{}' (tests: 5)".format(level))
 plt.xlabel('Evaluations')
