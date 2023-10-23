@@ -762,23 +762,20 @@ class Symbolic_Regession_EP(object):
 
 #%%
 # LOAD DATA
-level = 'Bronze.txt'
+level = 'Silver.txt'
 folder = 'Results_{}'.format(level)
-filename = '{}/GP_date_Oct-22_19-26_3000_popsize_5_tests_100000_evals.pkl'.format(folder)
+filename = '{}/GP_date_Oct-22_20-24_3000_popsize_5_tests_100000_evals.pkl'.format(folder)
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
     data = pickle.load(file)
 
 
-# to make a dot plot we need to change from fitness to MSE
-# we can also do a convergence plot with fitness actually (since perfect fitness will be 1)
 
 
 #%%
 # PREPARE DATA
 # rearrange the x_arr etc to fill in 100,000 evals & restructure it in the same way we did the HC
-# for nicest plot of each iter we need to plot the last of the best heaps (data[0][1][-1].plot I think)
 
 x_arr = np.full((len(data), data[0][0][-1]), None, dtype=float)
 y_arr = np.full((len(data), data[0][0][-1]), None, dtype=float)
@@ -833,22 +830,59 @@ plt.savefig('{}/GP_Learning_Curve_{}evals.pdf'.format(folder, len(x_mean)), dpi=
 plt.show()
 
 
+# %%
+# DOT PLOT
+# to make a dot plot we need to change from fitness to MSE
+
+x = data[0][0]
+y = data[0][2]
+y_mses = np.full((len(y),len(y[0])), None, dtype=float)
+print(y)
+print(y_mses)
+
+for i in range(len(y)):
+    for j in range(len(y[i])):
+        y_mses[i][j] = np.log(y[i][j])/(-0.05)
+
+
+#%%
+print(y)
+print(y_mses)
+
+#%%
+plt.figure(figsize=(10, 10))
+for i in range(len(x)):
+    plt.scatter(np.full(len(y[i]), x[i]), y_mses[i], color='black', s=0.01)
+plt.plot(x_arr[0], y_arr[0], '-', label='GP Learning Curve', color='#3C7BB3')
+#plt.errorbar(x_err, y_err, yerr=err, color='#3C7BB3', fmt='o', capsize=5, markersize=4)
+plt.title("GP Dot Plot for '{}'".format(level))
+plt.xlabel('Evaluations')
+plt.ylabel('MSE')
+plt.yscale('log')
+plt.legend()
+plt.grid(True)
+plt.savefig('{}/GP_Dot_Plot_{}evals.pdf'.format(folder, len(x_mean)), dpi=300)
+plt.show()
+
+
 
 # %%
 # PLOT AGAINST FUNCTION
+# for nicest plot of each iter we need to plot the last of the best heaps (data[0][1][-1].plot I think)
+
 true_data = np.loadtxt(level, dtype=float, delimiter=',')
 
 for j in range(len(data)):
     x_plot = np.full(len(true_data.T[0]), None, dtype=float)
     y_plot = np.full(len(true_data.T[0]), None, dtype=float)
 
-    tree = data[j][0]
-    MSE = round(data[j][0].MSE, 8)
+    tree = data[j][1][-1]
+    MSE = round(data[j][1][-1].MSE, 8)
     figure_text = f"Heap:\n\n{tree}\n\n\nMSE:\n\n{MSE}"
 
     for i, x in enumerate(true_data.T[0]):
         x_plot[i] = x
-        y_plot[i] = data[j][0].evaluate(X=x)
+        y_plot[i] = tree.evaluate(X=x)
 
     fig, ax = plt.subplots(figsize=(13.7, 10))
     fig.subplots_adjust(right=0.7)
@@ -866,4 +900,41 @@ for j in range(len(data)):
         os.makedirs(folder_path)
     fig.savefig('{}/GP_Solution_test#{}.pdf'.format(folder_path, j), dpi=300)
     plt.show()
+
+
+
+# %%
+# CONVERGENCE PLOT
+# we can also do a convergence plot with fitness actually (since perfect fitness will be 1)
+
+x_arr = np.full((len(data), data[0][0][-1]), None, dtype=float)
+y_arr = np.full((len(data), data[0][0][-1]), None, dtype=float)
+
+for i in range(len(data)):
+    x_start = 0
+    y_min = 0
+    x_max = len(data[i][1])-1
+    for j in range(data[0][0][-1]):
+        x_arr[i][j] = j
+        if j == data[i][0][x_start]:
+            y_min = data[i][1][x_start].fitness # !!!!! fitness here so convergence plot
+            print(y_min)
+            if x_start < x_max:
+                x_start += 1
+        y_arr[i][j] = y_min
+
+#%%
+print(x_arr)
+print(y_arr)
+
+plt.figure(figsize=(10, 10))
+plt.plot(x_arr[0], y_arr[0], '-', label='GP', color='#3C7BB3')
+plt.title("Genetic Programming Convergence Plot for '{}'".format(folder))
+plt.xlabel('Evaluations')
+plt.ylabel('Convergence (1 == perfect fit)')
+#plt.yscale('log')
+plt.legend()
+plt.grid(True)
+plt.savefig('{}/GP_Convergence_Plot_{}evals.pdf'.format(folder, len(x_mean)), dpi=300)
+plt.show()
 

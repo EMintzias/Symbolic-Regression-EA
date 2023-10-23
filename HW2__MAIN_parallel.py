@@ -45,7 +45,7 @@ Y_range_Pt = (np.min(Platinum_data[:, 1]), np.max(Platinum_data[:, 1]))
 data = Silver_data
 plt.plot(data[:, 0], data[:, 1], label='Silver.txt')
 x = np.linspace(0, 10, 1000)
-y = .1 * x * x + .5*x*np.cos(1.3*x)
+y = x/(2+np.sin(x))
 plt.plot(x, y, label='My shitty approximation')
 plt.legend()
 plt.xlabel('X-axis')

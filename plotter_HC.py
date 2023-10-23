@@ -505,9 +505,9 @@ class NP_Heap(Function_node):
 
 #%%
 # LOAD DATA
-level = 'Platinum.txt'
+level = 'Silver.txt'
 folder = 'Results_{}'.format(level)
-filename = '{}/HC_date_Oct-22_18-24_5_tests_180_evals.pkl'.format(folder)
+filename = '{}/HC_date_Oct-22_07-34_5_tests_128_evals.pkl'.format(folder)
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -565,7 +565,7 @@ plt.ylabel('MSE')
 plt.yscale('log')
 plt.legend()
 plt.grid(True)
-plt.savefig('{}/HC_Learning_Curve_{}evals.pdf'.format(folder, x_largest), dpi=300)
+#plt.savefig('{}/HC_Learning_Curve_{}evals.pdf'.format(folder, x_largest), dpi=300)
 plt.show()
 
 
@@ -603,4 +603,37 @@ for j in range(len(data)):
     plt.show()
 
 
+# %%
+# CONVERGENCE PLOT
+# we can also do a convergence plot with fitness actually (since perfect fitness will be 1)
+
+x_arr = np.full((len(data), x_largest), None, dtype=float)
+y_arr = np.full((len(data), x_largest), None, dtype=float)
+
+for i in range(len(data)):
+    x_start = 0
+    y_min = 1e4
+    x_max = len(data[i][1])-1
+    for j in range(x_largest):
+        x_arr[i][j] = j
+        if j == data[i][1][x_start][0]:
+            y_min = np.exp(-0.05*data[i][1][x_start][1]) + 1e-6 # !!!!! fitness here so convergence plot
+            if x_start < x_max:
+                x_start += 1
+        y_arr[i][j] = y_min
+
+#%%
+print(x_arr)
+print(y_arr)
+
+plt.figure(figsize=(10, 10))
+plt.plot(x_arr[0], y_arr[0], '-', label='HC', color='darkorange')
+plt.title("Hill Climber Convergence Plot for '{}'".format(folder))
+plt.xlabel('Evaluations')
+plt.ylabel('Convergence (1 == perfect fit)')
+#plt.yscale('log')
+plt.legend()
+plt.grid(True)
+#plt.savefig('{}/GP_Convergence_Plot_{}evals.pdf'.format(folder, len(x_mean)), dpi=300)
+plt.show()
 # %%
