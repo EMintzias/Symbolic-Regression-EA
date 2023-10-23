@@ -777,21 +777,22 @@ def save_run(Population, data_name, folder="saved_runs", optional=''):
 
 if __name__ == '__main__':
     # RANDOM SEARCH LEARNING CURVE PLOT
-    level = input("Enter level (Bronze.txt, Silver.txt, Gold.txt, Platinum.txt): ")
+    level = 'Gold.txt' #input("Enter level (Bronze.txt, Silver.txt, Gold.txt, Platinum.txt): ")
     data = np.loadtxt(level, dtype=float, delimiter=',')
     Y_range = (np.min(data[:, 1]), np.max(data[:, 1]))
-    iterations = 5
-    pop_size = input("Enter population size (3,000): ")
+    iterations = 1
+    pop_size = 1000 #input("Enter population size (3,000): ")
     pop_size = int(pop_size)
-    evals = input("Enter number of evals (100,000): ")
+    evals = 10000000 #input("Enter number of evals (100,000): ")
     evals = int(evals)
 
     # Runs
     # We want to output eval_log, ith_best_function, ith_population_fitnesses
+    T = .05
     Populations = np.full(iterations, None, dtype=object)
     for i in tqdm(range(iterations), desc='Iterations:', leave=False):
-        Population = Symbolic_Regession_EP(pop_size=pop_size, target_data=data, T=.05, cores=4)
+        Population = Symbolic_Regession_EP(pop_size=pop_size, target_data=data, T=T, cores=4)
         Population.run(min_MSE=.00001, Update_freq=100, max_evaluations=evals, Plotting=False)
         Populations[i] = (Population.eval_log, Population.ith_best_function, Population.ith_population_fitnesses)
     # Save runs
-    save_run(Populations, 'GP', folder='Results_{}'.format(level), optional='{}_popsize_{}_tests_{}_evals_Conventional'.format(pop_size, iterations, evals))
+    save_run(Populations, 'GP', folder='Results_{}'.format(level), optional='{}_popsize_{}_tests_{}_evals_{}_T_Conventional'.format(pop_size, iterations, evals, T))

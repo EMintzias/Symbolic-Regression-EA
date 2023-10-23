@@ -764,7 +764,7 @@ class Symbolic_Regession_EP(object):
 # LOAD DATA
 level = 'Gold.txt'
 folder = 'Results_{}'.format(level)
-filename = '{}/GP_date_Oct-23_03-01_3000_popsize_5_tests_100000_evals_DC_HP.pkl'.format(folder)
+filename = '{}/GP_date_Oct-23_03-17_3000_popsize_5_tests_100000_evals_Conventional.pkl'.format(folder)
 # Open the file in read-binary mode ('rb') to read the data.
 with open(filename, 'rb') as file:
     # Use pickle.load() to load the data from the file.
@@ -820,7 +820,7 @@ print(len(err))
 plt.figure(figsize=(10, 10))
 plt.plot(x_mean, y_mean, '-', label='GP Conventional', color='#3C7BB3')
 plt.errorbar(x_err, y_err, yerr=err, color='#3C7BB3', fmt='o', capsize=5, markersize=4)
-plt.title("GP Conventional Learning Curve for '{}' (tests: {})".format(folder, len(data)))
+plt.title("GP Conventional Learning Curve for '{}' (tests: {})".format(level, len(data)))
 plt.xlabel('Evaluations')
 plt.ylabel('MSE')
 plt.yscale('log')
